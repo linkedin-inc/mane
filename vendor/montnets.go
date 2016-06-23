@@ -13,7 +13,6 @@ import (
 	"time"
 
 	mo "github.com/linkedin-inc/mane/model"
-	t "github.com/linkedin-inc/mane/template"
 )
 
 const (
@@ -75,27 +74,6 @@ func NewMontnets(username, password, sendEndpoint, statusEndpoint, balanceEndpoi
 
 func (m Montnets) Name() Name {
 	return NameMontnets
-}
-
-func (m Montnets) Register(channel t.Channel) {
-	if Registry.Channels == nil {
-		Registry.Channels = make(map[t.Channel][]Vendor)
-	}
-	vendors, existed := Registry.Channels[channel]
-	if !existed {
-		Registry.Channels[channel] = []Vendor{m}
-	} else {
-		Registry.Channels[channel] = append(vendors, m)
-	}
-	if Registry.Vendors == nil {
-		Registry.Vendors = make(map[Name][]Vendor)
-	}
-	vendors, existed = Registry.Vendors[NameMontnets]
-	if !existed {
-		Registry.Vendors[NameMontnets] = []Vendor{m}
-	} else {
-		Registry.Vendors[NameMontnets] = append(vendors, m)
-	}
 }
 
 //Send sms to given phone number with content

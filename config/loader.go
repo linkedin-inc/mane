@@ -5,12 +5,18 @@ import (
 	"linkedin/log"
 	"linkedin/service/mongodb"
 	"linkedin/service/myredis"
-	f "github.com/linkedin-inc/mane/filter"
-	t "github.com/linkedin-inc/mane/template"
 	"time"
 
+	f "github.com/linkedin-inc/mane/filter"
+	t "github.com/linkedin-inc/mane/template"
 	"gopkg.in/mgo.v2"
 )
+
+type SMSConfig struct {
+	Username  string
+	Password  string
+	Endpoints []string
+}
 
 var (
 	ErrTemplateNotFound     = errors.New("template not found")

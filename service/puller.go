@@ -25,10 +25,11 @@ var (
 	ErrNothingPulled = errors.New("nothing pulled")
 )
 
-//Pull delivery stauts and reply from vendor
+//Pull delivery status and reply from vendor
 func Pull() error {
 	var err error
-	for name := range v.Registry.Vendors {
+	names, _ := v.GetAll()
+	for _, name := range names {
 		err = PullByName(name)
 		if err != nil {
 			log.Error.Printf("occur error when pull from vendor: %v\n%v\n", name, err)

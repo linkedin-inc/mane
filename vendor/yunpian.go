@@ -12,7 +12,6 @@ import (
 	"time"
 
 	m "github.com/linkedin-inc/mane/model"
-	t "github.com/linkedin-inc/mane/template"
 )
 
 const (
@@ -82,27 +81,6 @@ func NewYunpian(apiKey, sendEndpoint, multiSendEndpoint, statusEndpoint, replyEn
 
 func (y Yunpian) Name() Name {
 	return NameYunpian
-}
-
-func (y Yunpian) Register(channel t.Channel) {
-	if Registry.Channels == nil {
-		Registry.Channels = make(map[t.Channel][]Vendor)
-	}
-	vendors, existed := Registry.Channels[channel]
-	if !existed {
-		Registry.Channels[channel] = []Vendor{y}
-	} else {
-		Registry.Channels[channel] = append(vendors, y)
-	}
-	if Registry.Vendors == nil {
-		Registry.Vendors = make(map[Name][]Vendor)
-	}
-	vendors, existed = Registry.Vendors[NameYunpian]
-	if !existed {
-		Registry.Vendors[NameYunpian] = []Vendor{y}
-	} else {
-		Registry.Vendors[NameYunpian] = append(vendors, y)
-	}
 }
 
 func (y Yunpian) Send(seqID string, phoneArray []string, contentArray []string) error {

@@ -2,9 +2,10 @@ package vendor
 
 import (
 	"errors"
-	"fmt"
+	"linkedin/log"
 
-	"github.com/linkedin-inc/mane/model"
+	c "github.com/linkedin-inc/mane/config"
+	m "github.com/linkedin-inc/mane/model"
 	t "github.com/linkedin-inc/mane/template"
 )
 
@@ -17,40 +18,56 @@ var (
 	ErrVendorNotFound     = errors.New("vendor not found")
 )
 
-var Registry struct {
+type vendorRegistry struct {
 	Channels map[t.Channel][]Vendor
 	Vendors  map[Name][]Vendor
 }
 
+var registry vendorRegistry
+
 func init() {
-	prepare()
-	fmt.Println("prepared vendors:", Registry)
+	registry = vendorRegistry{
+		Channels: make(map[t.Channel][]Vendor),
+		Vendors:  make(map[Name][]Vendor),
+	}
 }
 
-func prepare() {
-	//montnets
-	montnetsForProduction := NewMontnets("", "", "", "", "")
-	montnetsForProduction.Register(t.ProductionChannel)
-	montnetsForMarketing := NewMontnets("", "", "", "", "")
-	montnetsForMarketing.Register(t.MarketingChannel)
-	//yunpian
+func Prepare(config map[t.Channel]c.SMSConfig) {
+	for k, v := range config {
+		Register(k, NewMontnets(v.Username, v.Password, v.Endpoints[0], v.Endpoints[1], v.Endpoints[2]))
+	}
+	log.Info.Println("prepared vendors:", registry)
 }
 
 type Name string
 
 //Vendor represents a SMS vendor, it can preforms two behaviors, send sms and check delivery status and pull reply.
 type Vendor interface {
-	Register(channel t.Channel)
 	Name() Name
 	Send(seqID string, phoneArray []string, contentArray []string) error
-	Status() ([]model.DeliveryStatus, error)
-	Reply() ([]model.Reply, error)
+	Status() ([]m.DeliveryStatus, error)
+	Reply() ([]m.Reply, error)
 	GetBalance() (string, error)
+}
+
+func Register(ch t.Channel, v Vendor) {
+	vendors, existed := registry.Channels[ch]
+	if !existed {
+		registry.Channels[ch] = []Vendor{v}
+	} else {
+		registry.Channels[ch] = append(vendors, v)
+	}
+	vendors, existed = registry.Vendors[v.Name()]
+	if !existed {
+		registry.Vendors[v.Name()] = []Vendor{v}
+	} else {
+		registry.Vendors[v.Name()] = append(vendors, v)
+	}
 }
 
 //GetByChannel return a registered SMS vendor for given channel
 func GetByChannel(channel t.Channel) (Vendor, error) {
-	vendors, existed := Registry.Channels[channel]
+	vendors, existed := registry.Channels[channel]
 	if !existed || len(vendors) == 0 {
 		return nil, ErrVendorNotFound
 	}
@@ -64,9 +81,20 @@ func choose(vendors []Vendor) (Vendor, error) {
 
 //GetByName return a vendor for given name
 func GetByName(name Name) ([]Vendor, error) {
-	vendors, existed := Registry.Vendors[name]
+	vendors, existed := registry.Vendors[name]
 	if !existed || len(vendors) == 0 {
 		return nil, ErrVendorNotFound
 	}
 	return vendors, nil
+}
+
+func GetAll() ([]Name, error) {
+	names := make([]Name, 0)
+	if len(registry.Vendors) == 0 {
+		return names, ErrVendorNotFound
+	}
+	for k := range registry.Vendors {
+		names = append(names, k)
+	}
+	return names, nil
 }

@@ -49,6 +49,17 @@ func (ch Channel) String() string {
 	}
 }
 
+func WhichChannel(str string) Channel {
+	switch str {
+	case "production":
+		return ProductionChannel
+	case "marketing":
+		return MarketingChannel
+	default:
+		return UnknownChannel
+	}
+}
+
 type SMSCategory struct {
 	Name        Category `bson:"category" json:"category"`
 	Channel     Channel  `bson:"channel" json:"channel"`
