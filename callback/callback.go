@@ -1,10 +1,10 @@
 package callback
 
 import (
-	m "github.com/linkedin-inc/mane/model"
 	"sync"
 
 	"github.com/go-errors/errors"
+	m "github.com/linkedin-inc/mane/model"
 )
 
 var (
@@ -29,7 +29,6 @@ func init() {
 		locker:    new(sync.RWMutex),
 		callbacks: make(map[Name]Callback),
 	}
-	RegisterAll()
 }
 
 //Register callback with given name
