@@ -25,21 +25,7 @@ var (
 	ErrNothingPulled = errors.New("nothing pulled")
 )
 
-//Pull delivery status and reply from vendor
-func Pull() error {
-	var err error
-	names, _ := v.GetAll()
-	for _, name := range names {
-		err = PullByName(name)
-		if err != nil {
-			log.Error.Printf("occur error when pull from vendor: %v\n%v\n", name, err)
-			break
-		}
-	}
-	return err
-}
-
-func PullByName(name v.Name) error {
+func Pull(name v.Name) error {
 	vendors, err := v.GetByName(name)
 	if err != nil {
 		log.Error.Printf("occur error when find vendor %v : %v\n", name, err)
@@ -47,32 +33,23 @@ func PullByName(name v.Name) error {
 	}
 	for _, vendor := range vendors {
 		for {
-			//pull status continously
-			statuses, err := vendor.Status()
+			statuses, err := fetchStatus(vendor)
 			if err != nil {
 				log.Error.Printf("failed to pull status from %v : %v\n", vendor.Name(), err)
 				break
 			}
 			if len(statuses) == 0 {
-				//nothing pulled, exit
 				break
 			}
 			processStatus(statuses)
-			err = saveStatus(statuses)
-			if err != nil {
-				log.Error.Printf("failed to save status from %v : %v\n", vendor.Name(), err)
-				break
-			}
 		}
 		for {
-			//pull reply continuously
-			replies, err := vendor.Reply()
+			replies, err := fetchReply(vendor)
 			if err != nil {
 				log.Error.Printf("failed to pull reply from %v : %v\n", vendor.Name(), err)
 				break
 			}
 			if len(replies) == 0 {
-				//nothing pulled, exit
 				break
 			}
 			err = saveReply(replies)
@@ -91,32 +68,25 @@ func fetchStatus(vendor v.Vendor) ([]m.DeliveryStatus, error) {
 		log.Error.Printf("failed to pull status from %v : %v\n", vendor.Name(), err)
 		return []m.DeliveryStatus{}, err
 	}
-	if len(statuses) == 0 {
-		return []m.DeliveryStatus{}, ErrNothingPulled
-	}
 	err = saveStatus(statuses)
 	if err != nil {
 		log.Error.Printf("failed to save status from %v : %v\n", vendor.Name(), err)
-		return []m.DeliveryStatus{}, err
 	}
 	return statuses, nil
 }
 
-func fetchReply(vendor v.Vendor) error {
+func fetchReply(vendor v.Vendor) ([]m.Reply, error) {
 	replies, err := vendor.Reply()
 	if err != nil {
 		log.Error.Printf("failed to pull reply from %v : %v\n", vendor.Name(), err)
-		return err
-	}
-	if len(replies) == 0 {
-		return ErrNothingPulled
+		return []m.Reply{}, err
 	}
 	err = saveReply(replies)
 	if err != nil {
 		log.Error.Printf("failed to save reply from %v : %v\n", vendor.Name(), err)
-		return err
+		return []m.Reply{}, err
 	}
-	return nil
+	return replies, nil
 }
 
 func processStatus(statuses []m.DeliveryStatus) {
@@ -150,6 +120,7 @@ func processStatus(statuses []m.DeliveryStatus) {
 			callback, err1 = cb.Lookup(category.Callback)
 			if err1 != nil {
 				log.Error.Printf("failed to lookup callback: %v\n", err1)
+				unprocessedMsgIDs = append(unprocessedMsgIDs, msgID)
 				continue
 			}
 			if callback == nil {
@@ -222,10 +193,10 @@ func saveReply(replies []m.Reply) error {
 	if len(replies) == 0 {
 		return nil
 	}
-	interfaces := make([]interface{}, len(replies))
+	replyHistories := make([]interface{}, len(replies))
 	var unsubscribers []interface{}
 	for i, reply := range replies {
-		interfaces[i] = reply
+		replyHistories[i] = reply
 		if strings.EqualFold(strings.TrimSpace(reply.Msg), UnsubscribeKeyword) {
 			aUnsubscriber := m.Unsubscriber{
 				Timestamp: reply.Timestamp,
@@ -235,21 +206,22 @@ func saveReply(replies []m.Reply) error {
 		}
 	}
 	var err error
-	_ = mongodb.Exec(m.CollSMSReply, func(c *mgo.Collection) error {
-		err = c.Insert(interfaces...)
-		return err
-	})
-	if err != nil {
-		return err
-	}
-	if len(unsubscribers) > 0 {
-		_ = mongodb.Exec(m.CollUnsubscriber, func(c *mgo.Collection) error {
-			err = c.Insert(unsubscribers...)
-			return err
-		})
+	mongodb.Cmd("chitu", func(db *mgo.Database) error {
+		err = db.C(m.CollSMSReply).Insert(replyHistories...)
 		if err != nil {
 			return err
 		}
+		if len(unsubscribers) > 0 {
+			err = db.C(m.CollUnsubscriber).Insert(unsubscribers...)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		log.Error.Printf("occur error when save reply and unsubscriber: %v\n", err)
+		return err
 	}
 	return nil
 }
