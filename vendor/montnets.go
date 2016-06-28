@@ -250,7 +250,6 @@ func (m Montnets) parseReply(raw []string) []mo.Reply {
 
 func (m Montnets) GetBalance() (string, error) {
 	param := m.assembleBalanceRequest(requestTypeReply)
-	log.Debug.Println("m.BalanceEndpoint + param", m.BalanceEndpoint+param)
 	response, err := http.Get(m.BalanceEndpoint + param)
 	if err != nil {
 		log.Error.Printf("failed to query balance: %v\n", err)

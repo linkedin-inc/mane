@@ -26,6 +26,7 @@ var (
 )
 
 func Pull(name v.Name) error {
+	log.Info.Println("name", name)
 	vendors, err := v.GetByName(name)
 	if err != nil {
 		log.Error.Printf("occur error when find vendor %v : %v\n", name, err)
@@ -166,7 +167,7 @@ func processStatus(statuses []m.DeliveryStatus) {
 
 func extractMsgID(status m.DeliveryStatus) (int64, error) {
 	str := strconv.FormatInt(status.MsgID, 10)
-	if len(str) != 15 && len(str) != 18 {
+	if len(str) != 15 && len(str) != 18 && len(str) != 19 {
 		log.Error.Printf("status with invalid msg id: %d\n", status.MsgID)
 		return int64(0), ErrInvalidStatus
 	}
