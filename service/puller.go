@@ -26,7 +26,6 @@ var (
 )
 
 func Pull(name v.Name) error {
-	log.Info.Println("name", name)
 	vendors, err := v.GetByName(name)
 	if err != nil {
 		log.Error.Printf("occur error when find vendor %v : %v\n", name, err)
