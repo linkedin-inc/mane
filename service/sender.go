@@ -8,6 +8,7 @@ import (
 	"linkedin/service/neo4j"
 	"linkedin/util"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -59,6 +60,12 @@ func Push(channel t.Channel, category t.Category, content string, phoneArray []s
 		return "", err
 	}
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "[mane] err after push %v", err)
+			}
+		}()
+		updateLastEngagement(phoneArray)
 		smsHistories := assembleHistory(phoneArray, content, seqID, t.MarketingChannel, t.BlankName, category, vendor.Name(), m.SMSStateUnchecked)
 		err := saveHistory(smsHistories)
 		if err != nil {
