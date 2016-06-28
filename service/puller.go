@@ -3,7 +3,6 @@ package service
 import (
 	"linkedin/log"
 	"linkedin/service/mongodb"
-	"strconv"
 	"strings"
 
 	"github.com/go-errors/errors"
@@ -21,7 +20,6 @@ const (
 )
 
 var (
-	ErrInvalidStatus = errors.New("invalid status")
 	ErrNothingPulled = errors.New("nothing pulled")
 )
 
@@ -98,10 +96,7 @@ func processStatus(statuses []m.DeliveryStatus) {
 	unprocessedMsgIDs := []int64{}
 	//process status in loop! hmm, can process in batch?
 	for _, status := range statuses {
-		msgID, err := extractMsgID(status)
-		if err != nil {
-			continue
-		}
+		msgID := status.MsgID
 		var history m.SMSHistory
 		existed := mongodb.Exec(m.CollSMSHistory, func(c *mgo.Collection) error {
 			return c.Find(bson.M{"msg_id": msgID}).One(&history)
@@ -144,7 +139,7 @@ func processStatus(statuses []m.DeliveryStatus) {
 				continue
 			}
 		}
-		err = callback(&status, &history)
+		err := callback(&status, &history)
 		if err != nil {
 			log.Error.Printf("error when invoke callback: %v\n", err)
 			//TODO retry or discard?
@@ -162,15 +157,6 @@ func processStatus(statuses []m.DeliveryStatus) {
 		}
 		b.UpdateAll(params...)
 	})
-}
-
-func extractMsgID(status m.DeliveryStatus) (int64, error) {
-	str := strconv.FormatInt(status.MsgID, 10)
-	if len(str) != 15 && len(str) != 18 && len(str) != 19 {
-		log.Error.Printf("status with invalid msg id: %d\n", status.MsgID)
-		return int64(0), ErrInvalidStatus
-	}
-	return status.MsgID, nil
 }
 
 func saveStatus(statuses []m.DeliveryStatus) error {
