@@ -66,7 +66,7 @@ func Push(channel t.Channel, category t.Category, content string, phoneArray []s
 			}
 		}()
 		updateLastEngagement(phoneArray)
-		smsHistories := assembleHistory(phoneArray, content, seqID, t.MarketingChannel, t.BlankName, category, vendor.Name(), m.SMSStateUnchecked)
+		smsHistories := assembleHistory(phoneArray, content, seqID, channel, t.BlankName, category, vendor.Name(), m.SMSStateUnchecked)
 		err := saveHistory(smsHistories)
 		if err != nil {
 			log.Error.Printf("failed to save sms history: %v\n", err)
