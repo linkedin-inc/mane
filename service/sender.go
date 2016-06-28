@@ -148,12 +148,18 @@ func Send(name t.Name, variables map[string]string, phoneArray []string) (string
 		return "", "", err
 	}
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "[mane] err after push %v", err)
+			}
+		}()
+		//FIXME update timestamp of last engagament to user?
+		updateLastEngagement(phoneArray)
 		smsHistories := assembleHistory(allowed, content, seqID, channel, name, template.Category, vendor.Name(), m.SMSStateUnchecked)
 		err := saveHistory(smsHistories)
 		if err != nil {
 			log.Error.Printf("failed to save sms history: %v\n", err)
 		}
-		//FIXME update timestamp of last engagament to user?
 	}()
 	return strconv.FormatInt(seqID, 10), content, nil
 }
