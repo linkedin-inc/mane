@@ -156,11 +156,11 @@ func processStatus(statuses []m.DeliveryStatus) {
 	//update state
 	mongodb.ExecBulk(mongodb.GetMgoSession(), m.CollSMSHistory, func(b *mgo.Bulk) {
 		params := []interface{}{
-			bson.M{"msg_id": &bson.M{"$in": checkedMsgIDs}}, bson.M{"state": m.SMSStateChecked},
-			bson.M{"msg_id": &bson.M{"$in": processedMsgIDs}}, bson.M{"state": m.SMSStateProcessed},
-			bson.M{"msg_id": &bson.M{"$in": unprocessedMsgIDs}}, bson.M{"state": m.SMSStateUnprocessed},
+			bson.M{"msg_id": &bson.M{"$in": checkedMsgIDs}}, bson.M{"$set": bson.M{"state": m.SMSStateChecked}},
+			bson.M{"msg_id": &bson.M{"$in": processedMsgIDs}}, bson.M{"$set": bson.M{"state": m.SMSStateProcessed}},
+			bson.M{"msg_id": &bson.M{"$in": unprocessedMsgIDs}}, bson.M{"$set": bson.M{"state": m.SMSStateUnprocessed}},
 		}
-		b.Update(params...)
+		b.UpdateAll(params...)
 	})
 }
 
