@@ -285,5 +285,9 @@ func (y Yunpian) parseReply(raw []reply) []m.Reply {
 }
 
 func (y Yunpian) GetBalance() (string, error) {
-	return "", nil
+	return "", errors.New("not implemented")
+}
+
+func (y Yunpian) MultiXSend(msgIDArray []string, phoneArray []string, contentArray []string) error {
+	return errors.New("not implemented")
 }

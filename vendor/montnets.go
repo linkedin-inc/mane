@@ -1,6 +1,7 @@
 package vendor
 
 import (
+	"encoding/base64"
 	"encoding/xml"
 	"errors"
 	"io/ioutil"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/axgle/mahonia"
 	mo "github.com/linkedin-inc/mane/model"
 )
 
@@ -24,6 +26,7 @@ const (
 	formKeyPhoneCount   = "iMobiCount"
 	formKeySubPort      = "pszSubPort"
 	formKeyRequestType  = "iReqType"
+	formMultixmt        = "multixmt"
 	requestTypeReply    = "1"
 	requestTypeStatus   = "2"
 )
@@ -58,17 +61,19 @@ type Montnets struct {
 	Username        string
 	Password        string
 	SendEndpoint    string
+	MultiXSendPoint string
 	StatusEndpoint  string
 	BalanceEndpoint string
 }
 
-func NewMontnets(username, password, sendEndpoint, statusEndpoint, balanceEndpoint string) Montnets {
+func NewMontnets(username, password, sendEndpoint, statusEndpoint, balanceEndpoint, multiXSendPoint string) Montnets {
 	return Montnets{
 		Username:        username,
 		Password:        password,
 		SendEndpoint:    sendEndpoint,
 		StatusEndpoint:  statusEndpoint,
 		BalanceEndpoint: balanceEndpoint,
+		MultiXSendPoint: multiXSendPoint,
 	}
 }
 
@@ -83,6 +88,7 @@ func (m Montnets) Send(seqID string, phoneArray []string, contentArray []string)
 		log.Info.Printf("discard due to not in production environment!")
 		return ErrNotInProduction
 	}
+	// TODO max length is 1000
 	request := m.assembleSendRequest(seqID, phoneArray, contentArray)
 	response, err := http.PostForm(m.SendEndpoint, *request)
 	if err != nil {
@@ -285,4 +291,43 @@ func (m Montnets) handleBalanceResponse(response *http.Response) (string, error)
 		return "", err
 	}
 	return body, nil
+}
+
+func (m Montnets) MultiXSend(msgIDArray []string, phoneArray []string, contentArray []string) error {
+	//only send in production environment
+	if !util.IsProduction() {
+		log.Info.Printf("discard due to not in production environment!")
+		return ErrNotInProduction
+	}
+	if len(msgIDArray) != len(phoneArray) || len(msgIDArray) != len(contentArray) {
+		return errors.New("illegal params")
+	}
+	// TODO max length is 300
+	request := m.assembleMultiXSendRequest(msgIDArray, phoneArray, contentArray)
+	response, err := http.PostForm(m.MultiXSendPoint, *request)
+	if err != nil {
+		log.Error.Printf("failed to send multix sms: %v\n", err)
+		return err
+	}
+	if s := response.StatusCode; s != http.StatusOK {
+		return ErrSendSMSFailed
+	}
+	err = m.handleSendResponse(response)
+	if err != nil {
+		log.Error.Printf("failed to handle multix send response: %v\n", err)
+		return err
+	}
+	return nil
+}
+
+func (m Montnets) assembleMultiXSendRequest(msgIDArray []string, phoneArray []string, contentArray []string) *url.Values {
+	form := url.Values{}
+	form.Add(formKeyUserName, m.Username)
+	form.Add(formKeyPassword, m.Password)
+	multixmt := make([]string, len(msgIDArray))
+	for i := range msgIDArray {
+		multixmt = append(multixmt, msgIDArray[i]+"|"+"*"+"|"+phoneArray[i]+"|"+base64.StdEncoding.EncodeToString([]byte(mahonia.NewEncoder("GBK").ConvertString(contentArray[i]))))
+	}
+	form.Add(formMultixmt, strings.Join(multixmt, ","))
+	return &form
 }

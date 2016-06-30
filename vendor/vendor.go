@@ -34,7 +34,7 @@ func init() {
 
 func Prepare(config map[t.Channel]c.SMSConfig) {
 	for k, v := range config {
-		Register(k, NewMontnets(v.Username, v.Password, v.Endpoints[0], v.Endpoints[1], v.Endpoints[2]))
+		Register(k, NewMontnets(v.Username, v.Password, v.Endpoints[0], v.Endpoints[1], v.Endpoints[2], v.Endpoints[3]))
 	}
 	log.Info.Println("prepared vendors:", registry)
 }
@@ -45,6 +45,7 @@ type Name string
 type Vendor interface {
 	Name() Name
 	Send(seqID string, phoneArray []string, contentArray []string) error
+	MultiXSend(msgIDArray []string, phoneArray []string, contentArray []string) error
 	Status() ([]m.DeliveryStatus, error)
 	Reply() ([]m.Reply, error)
 	GetBalance() (string, error)
