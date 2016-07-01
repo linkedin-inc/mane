@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"linkedin/log"
 	"linkedin/service/mongodb"
-	"linkedin/service/neo4j"
 	"math/rand"
 	"os"
 	"strconv"
@@ -20,9 +19,7 @@ import (
 	t "github.com/linkedin-inc/mane/template"
 	u "github.com/linkedin-inc/mane/util"
 	v "github.com/linkedin-inc/mane/vendor"
-	"github.com/linkedin-inc/neoism"
 	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -45,10 +42,9 @@ func Push(channel t.Channel, category t.Category, content string, phoneArray []s
 	seqID := generateSeqID()
 	contentArray := []string{content}
 	err = vendor.Send(strconv.FormatInt(seqID, 10), phoneArray, contentArray)
-	updateLastEngagement(phoneArray)
-	smsHistories := assembleHistory(phoneArray, content, seqID, channel, t.BlankName, category, vendor.Name(), m.SMSStateChecked)
 	if err != nil {
 		if err == v.ErrNotInProduction {
+			smsHistories := assembleHistory(phoneArray, content, seqID, channel, t.BlankName, category, vendor.Name(), m.SMSStateChecked)
 			err := saveHistory(smsHistories)
 			if err != nil {
 				log.Error.Printf("failed to save sms history: %v\n", err)
@@ -59,6 +55,7 @@ func Push(channel t.Channel, category t.Category, content string, phoneArray []s
 		log.Error.Printf("occur error when send sms: %v\n", err)
 		return "", err
 	}
+	smsHistories := assembleHistory(phoneArray, content, seqID, channel, t.BlankName, category, vendor.Name(), m.SMSStateUnchecked)
 	err = saveHistory(smsHistories)
 	if err != nil {
 		log.Error.Printf("failed to save sms history: %v\n", err)
@@ -72,7 +69,7 @@ func MultiXPush(channel t.Channel, category t.Category, contentArray, phoneArray
 	if len(contentArray) != len(phoneArray) || len(contentArray) == 0 {
 		return []string{}, ErrInvalidVariables
 	}
-	log.Info.Printf("executed to MultiXPush sms, phones: %v, content: %v\n", phoneArray[0], contentArray[0])
+	log.Info.Printf("executed to MultiXPush sms, phones: %v, content: %v\n", phoneArray, contentArray)
 	vendor, err := v.GetByChannel(channel)
 	if err != nil {
 		log.Error.Printf("occur error when send sms: %v\n", err)
@@ -80,10 +77,9 @@ func MultiXPush(channel t.Channel, category t.Category, contentArray, phoneArray
 	}
 	msgIDList := generateSeqIDList(len(contentArray))
 	err = vendor.MultiXSend(msgIDList, phoneArray, contentArray)
-	updateLastEngagement(phoneArray)
-	smsHistories := assembleMultiXHistory(phoneArray, contentArray, msgIDList, channel, t.BlankName, category, vendor.Name(), m.SMSStateChecked)
 	if err != nil {
 		if err == v.ErrNotInProduction {
+			smsHistories := assembleMultiXHistory(phoneArray, contentArray, msgIDList, channel, t.BlankName, category, vendor.Name(), m.SMSStateChecked)
 			err := saveHistory(smsHistories)
 			if err != nil {
 				log.Error.Printf("failed to save multix sms history: %v\n", err)
@@ -94,6 +90,7 @@ func MultiXPush(channel t.Channel, category t.Category, contentArray, phoneArray
 		log.Error.Printf("occur error when send multix sms: %v\n", err)
 		return []string{}, err
 	}
+	smsHistories := assembleMultiXHistory(phoneArray, contentArray, msgIDList, channel, t.BlankName, category, vendor.Name(), m.SMSStateUnchecked)
 	err = saveHistory(smsHistories)
 	if err != nil {
 		log.Error.Printf("failed to save multix sms history: %v\n", err)
@@ -180,8 +177,6 @@ func Send(name t.Name, variables map[string]string, phoneArray []string) (string
 				fmt.Fprintf(os.Stderr, "[mane] err after push %v", err)
 			}
 		}()
-		//FIXME update timestamp of last engagament to user?
-		updateLastEngagement(phoneArray)
 		smsHistories := assembleHistory(allowed, content, seqID, channel, name, template.Category, vendor.Name(), m.SMSStateUnchecked)
 		err := saveHistory(smsHistories)
 		if err != nil {
@@ -256,23 +251,6 @@ func saveHistory(histories []interface{}) error {
 		return err
 	})
 	return err
-}
-
-func updateLastEngagement(phoneArray []string) {
-	for _, phone := range phoneArray {
-		ret := []m.TinyUser{}
-		neo4j.READONLY.C(`MATCH (n:User) WHERE n.phone={phone} RETURN id(n) as _id, n.phone as phone`,
-			neoism.Props{"phone": phone},
-			&ret,
-		)
-		if len(ret) > 0 {
-			if !mongodb.Exec("user", func(c *mgo.Collection) error {
-				return c.Update(bson.M{"_id": ret[0].UserID}, bson.M{"$set": bson.M{"last_receive_sms": u.CurrentTimeMillis()}})
-			}) {
-				log.Info.Println("user not exist")
-			}
-		}
-	}
 }
 
 func assembleTemplate(content string, variables map[string]string) (string, error) {
