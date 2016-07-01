@@ -6,7 +6,6 @@ import (
 	"linkedin/log"
 	"linkedin/service/mongodb"
 	"linkedin/service/neo4j"
-	"linkedin/util"
 	"math/rand"
 	"os"
 	"strconv"
@@ -19,6 +18,7 @@ import (
 	f "github.com/linkedin-inc/mane/filter"
 	m "github.com/linkedin-inc/mane/model"
 	t "github.com/linkedin-inc/mane/template"
+	u "github.com/linkedin-inc/mane/util"
 	v "github.com/linkedin-inc/mane/vendor"
 	"github.com/linkedin-inc/neoism"
 	"gopkg.in/mgo.v2"
@@ -62,7 +62,7 @@ func Push(channel t.Channel, category t.Category, content string, phoneArray []s
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				fmt.Fprintf(os.Stderr, "[mane] err after push %v", err)
+				fmt.Fprintf(os.Stderr, "[mane] err after push %v", r)
 			}
 		}()
 		updateLastEngagement(phoneArray)
@@ -73,6 +73,49 @@ func Push(channel t.Channel, category t.Category, content string, phoneArray []s
 		}
 	}()
 	return strconv.FormatInt(seqID, 10), nil
+}
+
+//Batch sending group sms with different contents, will return the corresponding MsgID Array and the error
+func MultiXPush(channel t.Channel, category t.Category, contentArray, phoneArray []string) ([]string, error) {
+	if len(contentArray) != len(phoneArray) || len(contentArray) == 0 {
+		return []string{}, ErrInvalidVariables
+	}
+	fmt.Printf("executed to MultiPush sms, phones: %v, content: %v\n", phoneArray[0], contentArray[0])
+	vendor, err := v.GetByChannel(channel)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "occur error when send sms: %v\n", err)
+		return []string{}, err
+	}
+	msgIDList := generateSeqIDList(len(contentArray))
+	err = vendor.MultiXSend(msgIDList, phoneArray, contentArray)
+	if err != nil {
+		if err == v.ErrNotInProduction {
+			go func() {
+				smsHistories := assembleMultiXHistory(phoneArray, contentArray, msgIDList, channel, t.BlankName, category, vendor.Name(), m.SMSStateChecked)
+				err := saveHistory(smsHistories)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "failed to save multix sms history: %v\n", err)
+				}
+			}()
+			return msgIDList, nil
+		}
+		log.Error.Printf("occur error when send multix sms: %v\n", err)
+		return []string{}, err
+	}
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Fprintf(os.Stderr, "[mane] err after multix push %v", r)
+			}
+		}()
+		updateLastEngagement(phoneArray)
+		smsHistories := assembleMultiXHistory(phoneArray, contentArray, msgIDList, channel, t.BlankName, category, vendor.Name(), m.SMSStateChecked)
+		err := saveHistory(smsHistories)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "failed to save multix sms history: %v\n", err)
+		}
+	}()
+	return msgIDList, nil
 }
 
 //Trigger by SMS job, such as postpone worker
@@ -171,6 +214,14 @@ func generateSeqID() int64 {
 	return seqID
 }
 
+func generateSeqIDList(length int) []string {
+	seqIDList := make([]string, length)
+	for i := 0; i < length; i++ {
+		seqIDList[i] = strconv.FormatInt(time.Now().UnixNano(), 10)
+	}
+	return seqIDList
+}
+
 func assembleHistory(phoneArray []string, content string, seqID int64, channel t.Channel, template t.Name, category t.Category, vendor v.Name, state m.SMSState) []interface{} {
 	timestamp := time.Now()
 	docs := make([]interface{}, len(phoneArray))
@@ -180,6 +231,26 @@ func assembleHistory(phoneArray []string, content string, seqID int64, channel t
 			Timestamp: timestamp,
 			Phone:     phone,
 			Content:   content,
+			Template:  string(template),
+			Category:  string(category),
+			Channel:   int(channel),
+			Vendor:    string(vendor),
+			State:     state,
+		}
+		docs[i] = sms
+	}
+	return docs
+}
+
+func assembleMultiXHistory(phoneArray []string, contentArray []string, seqIDStrArray []string, channel t.Channel, template t.Name, category t.Category, vendor v.Name, state m.SMSState) []interface{} {
+	timestamp := time.Now()
+	docs := make([]interface{}, len(phoneArray))
+	for i := range phoneArray {
+		sms := m.SMSHistory{
+			MsgID:     u.Atoi64Safe(seqIDStrArray[i], 0),
+			Timestamp: timestamp,
+			Phone:     phoneArray[i],
+			Content:   contentArray[i],
 			Template:  string(template),
 			Category:  string(category),
 			Channel:   int(channel),
@@ -212,7 +283,7 @@ func updateLastEngagement(phoneArray []string) {
 		)
 		if len(ret) > 0 {
 			if !mongodb.Exec("user", func(c *mgo.Collection) error {
-				return c.Update(bson.M{"_id": ret[0].UserID}, bson.M{"$set": bson.M{"last_receive_sms": util.CurrentTimeMillis()}})
+				return c.Update(bson.M{"_id": ret[0].UserID}, bson.M{"$set": bson.M{"last_receive_sms": u.CurrentTimeMillis()}})
 			}) {
 				log.Info.Println("user not exist")
 			}
