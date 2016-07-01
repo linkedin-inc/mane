@@ -80,7 +80,7 @@ func MultiXPush(channel t.Channel, category t.Category, contentArray, phoneArray
 	if len(contentArray) != len(phoneArray) || len(contentArray) == 0 {
 		return []string{}, ErrInvalidVariables
 	}
-	fmt.Printf("executed to MultiPush sms, phones: %v, content: %v\n", phoneArray[0], contentArray[0])
+	fmt.Printf("executed to MultiXPush sms, phones: %v, content: %v\n", phoneArray[0], contentArray[0])
 	vendor, err := v.GetByChannel(channel)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "occur error when send sms: %v\n", err)

@@ -16,6 +16,7 @@ var (
 	ErrGetReplyFailed     = errors.New("get reply failed")
 	ErrQueryBalanceFailed = errors.New("query balance failed")
 	ErrVendorNotFound     = errors.New("vendor not found")
+	ErrIllegalParameter   = errors.New("illegal parameter")
 )
 
 type vendorRegistry struct {

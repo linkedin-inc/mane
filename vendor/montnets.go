@@ -18,17 +18,18 @@ import (
 )
 
 const (
-	formKeyMsgID        = "MsgId"
-	formKeyUserName     = "userId"
-	formKeyPassword     = "password"
-	formKeyPhoneArray   = "pszMobis"
-	formKeyMessageArray = "pszMsg"
-	formKeyPhoneCount   = "iMobiCount"
-	formKeySubPort      = "pszSubPort"
-	formKeyRequestType  = "iReqType"
-	formMultixmt        = "multixmt"
-	requestTypeReply    = "1"
-	requestTypeStatus   = "2"
+	formKeyMsgID       = "MsgId"
+	formKeyUserName    = "userId"
+	formKeyPassword    = "password"
+	formKeyPhoneArray  = "pszMobis"
+	formKeyMessage     = "pszMsg"
+	formKeyPhoneCount  = "iMobiCount"
+	formKeySubPort     = "pszSubPort"
+	formKeyRequestType = "iReqType"
+	formMultixmt       = "multixmt"
+	requestTypeReply   = "1"
+	requestTypeStatus  = "2"
+	maxSendNumEachTime = 100 // limited by the vendor
 )
 
 var (
@@ -83,35 +84,63 @@ func (m Montnets) Name() Name {
 
 //Send sms to given phone number with content
 func (m Montnets) Send(seqID string, phoneArray []string, contentArray []string) error {
+	// only allow the same content
+	if len(contentArray) != 1 {
+		return ErrIllegalParameter
+	}
 	//only send in production environment
 	if !util.IsProduction() {
 		log.Info.Printf("discard due to not in production environment!")
 		return ErrNotInProduction
 	}
-	// TODO max length is 1000
-	request := m.assembleSendRequest(seqID, phoneArray, contentArray)
-	response, err := http.PostForm(m.SendEndpoint, *request)
-	if err != nil {
-		log.Error.Printf("failed to send sms: %v\n", err)
-		return err
+
+	// TODO send the request parallel, deal with the final error more elegant
+	log.Info.Printf("start sending sms, total length %d", len(phoneArray))
+	var finalError error
+	for i := 0; i < len(phoneArray); i++ {
+		start := i * maxSendNumEachTime
+		end := start + maxSendNumEachTime
+		if end > len(phoneArray) {
+			end = len(phoneArray)
+		}
+		if start >= end {
+			break
+		}
+		log.Info.Printf("start sending sms, start:%d, end:%d", start, end)
+		request := m.assembleSendRequest(seqID, phoneArray[start:end], contentArray[0])
+		response, err := http.PostForm(m.SendEndpoint, *request)
+		if err != nil {
+			log.Error.Printf("failed to send sms[%d:%d]: %v\n", start, end, err)
+			if finalError == nil {
+				finalError = err
+			}
+			continue
+		}
+		if s := response.StatusCode; s != http.StatusOK {
+			if finalError == nil {
+				finalError = ErrSendSMSFailed
+			}
+			continue
+		}
+		err = m.handleSendResponse(response)
+		if err != nil {
+			log.Error.Printf("failed to handle send response[%d:%d]: %v\n", start, end, err)
+			if finalError == nil {
+				finalError = ErrSendSMSFailed
+			}
+			continue
+		}
 	}
-	if s := response.StatusCode; s != http.StatusOK {
-		return ErrSendSMSFailed
-	}
-	err = m.handleSendResponse(response)
-	if err != nil {
-		log.Error.Printf("failed to handle send response: %v\n", err)
-		return err
-	}
-	return nil
+	log.Info.Printf("finish sending sms, total length %d", len(phoneArray))
+	return finalError
 }
 
-func (m Montnets) assembleSendRequest(seqID string, phoneArray []string, contentArray []string) *url.Values {
+func (m Montnets) assembleSendRequest(seqID string, phoneArray []string, content string) *url.Values {
 	form := url.Values{}
 	form.Add(formKeyUserName, m.Username)
 	form.Add(formKeyPassword, m.Password)
 	form.Add(formKeyPhoneArray, strings.Join(phoneArray, ","))
-	form.Add(formKeyMessageArray, strings.Join(contentArray, ","))
+	form.Add(formKeyMessage, content)
 	form.Add(formKeyPhoneCount, strconv.Itoa(len(phoneArray)))
 	form.Add(formKeySubPort, "*")
 	form.Add(formKeyMsgID, seqID)
@@ -302,22 +331,46 @@ func (m Montnets) MultiXSend(msgIDArray []string, phoneArray []string, contentAr
 	if len(msgIDArray) != len(phoneArray) || len(msgIDArray) != len(contentArray) {
 		return errors.New("illegal params")
 	}
-	// TODO max length is 300
-	request := m.assembleMultiXSendRequest(msgIDArray, phoneArray, contentArray)
-	response, err := http.PostForm(m.MultiXSendPoint, *request)
-	if err != nil {
-		log.Error.Printf("failed to send multix sms: %v\n", err)
-		return err
+
+	// TODO send the request parallel, deal with the final error more elegant
+	log.Info.Printf("start sending multiX sms, total length %d", len(phoneArray))
+	var finalError error
+	for i := 0; i < len(phoneArray); i++ {
+		start := i * maxSendNumEachTime
+		end := start + maxSendNumEachTime
+		if end > len(phoneArray) {
+			end = len(phoneArray)
+		}
+		if start >= end {
+			break
+		}
+		log.Info.Printf("start sending multiX sms, start:%d, end:%d", start, end)
+		request := m.assembleMultiXSendRequest(msgIDArray[start:end], phoneArray[start:end], contentArray[start:end])
+		response, err := http.PostForm(m.MultiXSendPoint, *request)
+		if err != nil {
+			log.Error.Printf("failed to send multiX sms[%d:%d]: %v\n", start, end, err)
+			if finalError == nil {
+				finalError = err
+			}
+			continue
+		}
+		if s := response.StatusCode; s != http.StatusOK {
+			if finalError == nil {
+				finalError = ErrSendSMSFailed
+			}
+			continue
+		}
+		err = m.handleSendResponse(response)
+		if err != nil {
+			log.Error.Printf("failed to handle multiX send response[%d:%d]: %v\n", start, end, err)
+			if finalError == nil {
+				finalError = ErrSendSMSFailed
+			}
+			continue
+		}
 	}
-	if s := response.StatusCode; s != http.StatusOK {
-		return ErrSendSMSFailed
-	}
-	err = m.handleSendResponse(response)
-	if err != nil {
-		log.Error.Printf("failed to handle multix send response: %v\n", err)
-		return err
-	}
-	return nil
+	log.Info.Printf("finish sending multiX sms, total length %d", len(phoneArray))
+	return finalError
 }
 
 func (m Montnets) assembleMultiXSendRequest(msgIDArray []string, phoneArray []string, contentArray []string) *url.Values {
