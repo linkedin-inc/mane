@@ -23,7 +23,7 @@ func TestGenerateSeqIDList(t *testing.T) {
 	}
 	for i := 0; i < N; i++ {
 		if len(mm[i]) != length {
-			t.Error("Expected d%, got %d", length, len(mm[i]))
+			t.Error("Expected %d, got %d", length, len(mm[i]))
 		}
 	}
 }

@@ -45,33 +45,25 @@ func Push(channel t.Channel, category t.Category, content string, phoneArray []s
 	seqID := generateSeqID()
 	contentArray := []string{content}
 	err = vendor.Send(strconv.FormatInt(seqID, 10), phoneArray, contentArray)
+	updateLastEngagement(phoneArray)
+	smsHistories := assembleHistory(phoneArray, content, seqID, channel, t.BlankName, category, vendor.Name(), m.SMSStateChecked)
 	if err != nil {
 		if err == v.ErrNotInProduction {
-			go func() {
-				smsHistories := assembleHistory(phoneArray, content, seqID, channel, t.BlankName, category, vendor.Name(), m.SMSStateChecked)
-				err := saveHistory(smsHistories)
-				if err != nil {
-					log.Error.Printf("failed to save sms history: %v\n", err)
-				}
-			}()
+			err := saveHistory(smsHistories)
+			if err != nil {
+				log.Error.Printf("failed to save sms history: %v\n", err)
+				return "", err
+			}
 			return strconv.FormatInt(seqID, 10), nil
 		}
 		log.Error.Printf("occur error when send sms: %v\n", err)
 		return "", err
 	}
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Fprintf(os.Stderr, "[mane] err after push %v", r)
-			}
-		}()
-		updateLastEngagement(phoneArray)
-		smsHistories := assembleHistory(phoneArray, content, seqID, channel, t.BlankName, category, vendor.Name(), m.SMSStateUnchecked)
-		err := saveHistory(smsHistories)
-		if err != nil {
-			log.Error.Printf("failed to save sms history: %v\n", err)
-		}
-	}()
+	err = saveHistory(smsHistories)
+	if err != nil {
+		log.Error.Printf("failed to save sms history: %v\n", err)
+		return "", err
+	}
 	return strconv.FormatInt(seqID, 10), nil
 }
 
@@ -80,41 +72,33 @@ func MultiXPush(channel t.Channel, category t.Category, contentArray, phoneArray
 	if len(contentArray) != len(phoneArray) || len(contentArray) == 0 {
 		return []string{}, ErrInvalidVariables
 	}
-	fmt.Printf("executed to MultiXPush sms, phones: %v, content: %v\n", phoneArray[0], contentArray[0])
+	log.Info.Printf("executed to MultiXPush sms, phones: %v, content: %v\n", phoneArray[0], contentArray[0])
 	vendor, err := v.GetByChannel(channel)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "occur error when send sms: %v\n", err)
+		log.Error.Printf("occur error when send sms: %v\n", err)
 		return []string{}, err
 	}
 	msgIDList := generateSeqIDList(len(contentArray))
 	err = vendor.MultiXSend(msgIDList, phoneArray, contentArray)
+	updateLastEngagement(phoneArray)
+	smsHistories := assembleMultiXHistory(phoneArray, contentArray, msgIDList, channel, t.BlankName, category, vendor.Name(), m.SMSStateChecked)
 	if err != nil {
 		if err == v.ErrNotInProduction {
-			go func() {
-				smsHistories := assembleMultiXHistory(phoneArray, contentArray, msgIDList, channel, t.BlankName, category, vendor.Name(), m.SMSStateChecked)
-				err := saveHistory(smsHistories)
-				if err != nil {
-					fmt.Fprintln(os.Stderr, "failed to save multix sms history: %v\n", err)
-				}
-			}()
+			err := saveHistory(smsHistories)
+			if err != nil {
+				log.Error.Printf("failed to save multix sms history: %v\n", err)
+				return []string{}, err
+			}
 			return msgIDList, nil
 		}
 		log.Error.Printf("occur error when send multix sms: %v\n", err)
 		return []string{}, err
 	}
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Fprintf(os.Stderr, "[mane] err after multix push %v", r)
-			}
-		}()
-		updateLastEngagement(phoneArray)
-		smsHistories := assembleMultiXHistory(phoneArray, contentArray, msgIDList, channel, t.BlankName, category, vendor.Name(), m.SMSStateChecked)
-		err := saveHistory(smsHistories)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "failed to save multix sms history: %v\n", err)
-		}
-	}()
+	err = saveHistory(smsHistories)
+	if err != nil {
+		log.Error.Printf("failed to save multix sms history: %v\n", err)
+		return []string{}, err
+	}
 	return msgIDList, nil
 }
 
