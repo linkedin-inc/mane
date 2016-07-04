@@ -85,6 +85,12 @@ func StoreVariables(phones []string, template t.Name, variables map[string]strin
 	}
 }
 
+func StoreVariableArray(phones []string, template t.Name, variableArray []map[string]string) {
+	for i := range phones {
+		variablesHolder[phones[i]+":"+string(template)] = variableArray[i]
+	}
+}
+
 func ClearVariables(phones []string, template t.Name) {
 	for _, phone := range phones {
 		delete(variablesHolder, phone+":"+string(template))
