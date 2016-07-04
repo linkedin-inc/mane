@@ -6,7 +6,6 @@ import (
 	"linkedin/log"
 	"linkedin/service/mongodb"
 	"math/rand"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -159,30 +158,23 @@ func Send(name t.Name, variables map[string]string, phoneArray []string) (string
 	err = vendor.Send(strconv.FormatInt(seqID, 10), allowed, contentArray)
 	if err != nil {
 		if err == v.ErrNotInProduction {
-			go func() {
-				smsHistories := assembleHistory(allowed, content, seqID, channel, name, template.Category, vendor.Name(), m.SMSStateChecked)
-				err := saveHistory(smsHistories)
-				if err != nil {
-					log.Error.Printf("failed to save sms history: %v\n", err)
-				}
-			}()
+			smsHistories := assembleHistory(allowed, content, seqID, channel, name, template.Category, vendor.Name(), m.SMSStateChecked)
+			err := saveHistory(smsHistories)
+			if err != nil {
+				log.Error.Printf("failed to save multix sms history: %v\n", err)
+				return "", "", err
+			}
 			return strconv.FormatInt(seqID, 10), content, nil
 		}
 		log.Error.Printf("occur error when send sms: %v\n", err)
 		return "", "", err
 	}
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Fprintf(os.Stderr, "[mane] err after push %v", err)
-			}
-		}()
-		smsHistories := assembleHistory(allowed, content, seqID, channel, name, template.Category, vendor.Name(), m.SMSStateUnchecked)
-		err := saveHistory(smsHistories)
-		if err != nil {
-			log.Error.Printf("failed to save sms history: %v\n", err)
-		}
-	}()
+	smsHistories := assembleHistory(allowed, content, seqID, channel, name, template.Category, vendor.Name(), m.SMSStateUnchecked)
+	err = saveHistory(smsHistories)
+	if err != nil {
+		log.Error.Printf("failed to save sms history: %v\n", err)
+		return "", "", err
+	}
 	return strconv.FormatInt(seqID, 10), content, nil
 }
 
