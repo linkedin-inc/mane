@@ -9,11 +9,6 @@ const (
 	CollUnsubscriber = "sms_unsubscriber"
 )
 
-type TinyUser struct {
-	UserID int64  `json:"_id"`
-	Phone  string `json:"phone"`
-}
-
 type SMSState int
 
 const (

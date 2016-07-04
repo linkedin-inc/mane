@@ -161,7 +161,7 @@ func Send(name t.Name, variables map[string]string, phoneArray []string) (string
 			smsHistories := assembleHistory(allowed, content, seqID, channel, name, template.Category, vendor.Name(), m.SMSStateChecked)
 			err := saveHistory(smsHistories)
 			if err != nil {
-				log.Error.Printf("failed to save multix sms history: %v\n", err)
+				log.Error.Printf("failed to save sms history: %v\n", err)
 				return "", "", err
 			}
 			return strconv.FormatInt(seqID, 10), content, nil
