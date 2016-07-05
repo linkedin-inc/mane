@@ -341,44 +341,51 @@ func (m Montnets) MultiXSend(msgIDArray []string, phoneArray []string, contentAr
 	if len(msgIDArray) != len(phoneArray) || len(msgIDArray) != len(contentArray) {
 		return errors.New("illegal params")
 	}
-
-	// TODO send the request parallel, deal with the final error more elegant
-	log.Info.Printf("start sending multiX sms, total length %d", len(phoneArray))
 	var finalError error
-	for i := 0; i < len(phoneArray); i++ {
+	pool := u.NewPool(poolSize, poolSize)
+	defer pool.Release()
+	jobCount := int(math.Ceil(float64(len(phoneArray)) / float64(maxSendNumEachTime))) // total job count
+	pool.WaitCount(jobCount)
+	log.Info.Printf("start sending multiX sms, total length: %d, total job count: %d", len(phoneArray), jobCount)
+	for i := 0; i < jobCount; i++ {
 		start := i * maxSendNumEachTime
 		end := start + maxSendNumEachTime
-		if end > len(phoneArray) {
-			end = len(phoneArray)
-		}
-		if start >= end {
-			break
-		}
-		log.Info.Printf("start sending multiX sms, start:%d, end:%d", start, end)
-		request := m.assembleMultiXSendRequest(msgIDArray[start:end], phoneArray[start:end], contentArray[start:end])
-		response, err := http.PostForm(m.MultiXSendPoint, *request)
-		if err != nil {
-			log.Error.Printf("failed to send multiX sms[%d:%d]: %v\n", start, end, err)
-			if finalError == nil {
-				finalError = err
+		currentStep := i
+		pool.JobQueue <- func() {
+			defer pool.JobDone()
+			if end > len(phoneArray) {
+				end = len(phoneArray)
 			}
-			continue
-		}
-		if s := response.StatusCode; s != http.StatusOK {
-			if finalError == nil {
-				finalError = ErrSendSMSFailed
+			if start >= end {
+				return
 			}
-			continue
-		}
-		err = m.handleSendResponse(response)
-		if err != nil {
-			log.Error.Printf("failed to handle multiX send response[%d:%d]: %v\n", start, end, err)
-			if finalError == nil {
-				finalError = ErrSendSMSFailed
+			log.Info.Printf("start sending multiX sms, current step:%d, start:%d, end:%d", currentStep, start, end)
+			request := m.assembleMultiXSendRequest(msgIDArray[start:end], phoneArray[start:end], contentArray[start:end])
+			response, err := http.PostForm(m.MultiXSendPoint, *request)
+			if err != nil {
+				log.Error.Printf("failed to send multiX sms[%d:%d]: %v\n", start, end, err)
+				if finalError == nil {
+					finalError = err
+				}
+				return
 			}
-			continue
+			if s := response.StatusCode; s != http.StatusOK {
+				if finalError == nil {
+					finalError = ErrSendSMSFailed
+				}
+				return
+			}
+			err = m.handleSendResponse(response)
+			if err != nil {
+				log.Error.Printf("failed to handle multiX send response[%d:%d]: %v\n", start, end, err)
+				if finalError == nil {
+					finalError = ErrSendSMSFailed
+				}
+				return
+			}
 		}
 	}
+	pool.WaitAll()
 	log.Info.Printf("finish sending multiX sms, total length %d", len(phoneArray))
 	return finalError
 }
