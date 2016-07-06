@@ -178,19 +178,19 @@ func Send(name t.Name, variables map[string]string, phoneArray []string) (string
 	return strconv.FormatInt(seqID, 10), content, nil
 }
 
-// batch send sms with different values map for one tpl, return msgid array, content array and the error
-func MultiXSend(name t.Name, variableArray []map[string]string, phoneArray []string) ([]string, []string, error) {
+// batch send sms with different values map for one tpl, return  msgid array, allowed phone array, content array and the error
+func MultiXSend(name t.Name, variableArray []map[string]string, phoneArray []string) ([]string, []string, []string, error) {
 	log.Info.Printf("executed to MultiXSend sms, phones: %v, template: %v\n", phoneArray, name)
 	if len(phoneArray) == 0 {
-		return []string{}, []string{}, ErrInvalidPhoneArray
+		return []string{}, []string{}, []string{}, ErrInvalidPhoneArray
 	}
 	if len(variableArray) == 0 || len(phoneArray) != len(variableArray) {
-		return []string{}, []string{}, ErrInvalidVariables
+		return []string{}, []string{}, []string{}, ErrInvalidVariables
 	}
 	f.StoreVariableArray(phoneArray, name, variableArray)
 	allowed := f.ProcessChain(phoneArray, name)
 	if len(allowed) == 0 {
-		return []string{}, []string{}, ErrNotAllowed
+		return []string{}, []string{}, []string{}, ErrNotAllowed
 	}
 	// only keep the allowed phones values map
 	allowedVariableArray := make([]map[string]string, len(allowed))
@@ -198,7 +198,7 @@ func MultiXSend(name t.Name, variableArray []map[string]string, phoneArray []str
 		v, existed := f.FindVariables(allowed[i], name)
 		if !existed {
 			log.Error.Println("impossible MultiXSend error")
-			return []string{}, []string{}, ErrInvalidVariables
+			return []string{}, []string{}, []string{}, ErrInvalidVariables
 		}
 		allowedVariableArray[i] = v
 	}
@@ -206,23 +206,23 @@ func MultiXSend(name t.Name, variableArray []map[string]string, phoneArray []str
 	template, err := c.WhichTemplate(name)
 	if err != nil {
 		log.Error.Printf("occur error when MultiXSend sms: %v\n", err)
-		return []string{}, []string{}, err
+		return []string{}, []string{}, []string{}, err
 	}
 	channel, err := c.WhichChannel(template.Category)
 	if err != nil {
 		log.Error.Printf("occur error when MultiXSend sms: %v\n", err)
-		return []string{}, []string{}, err
+		return []string{}, []string{}, []string{}, err
 	}
 	vendor, err := v.GetByChannel(channel)
 	if err != nil {
 		log.Error.Printf("occur error when MultiXSend sms: %v\n", err)
-		return []string{}, []string{}, err
+		return []string{}, []string{}, []string{}, err
 	}
 	log.Info.Printf("template: %v\n", template.Content)
 	contentArray, err := assembleTemplateArray(template.Content, allowedVariableArray)
 	if err != nil {
 		log.Error.Printf("occur error when MultiXSend sms: %v\n", err)
-		return []string{}, []string{}, err
+		return []string{}, []string{}, []string{}, err
 	}
 	msgIDList := generateSeqIDList(len(allowed))
 	err = vendor.MultiXSend(msgIDList, allowed, contentArray)
@@ -232,20 +232,20 @@ func MultiXSend(name t.Name, variableArray []map[string]string, phoneArray []str
 			err := saveHistory(smsHistories)
 			if err != nil {
 				log.Error.Printf("failed to save MultiXSend history: %v\n", err)
-				return []string{}, []string{}, err
+				return []string{}, []string{}, []string{}, err
 			}
-			return msgIDList, contentArray, nil
+			return msgIDList, allowed, contentArray, nil
 		}
 		log.Error.Printf("occur error when MultiXSend sms: %v\n", err)
-		return []string{}, []string{}, err
+		return []string{}, []string{}, []string{}, err
 	}
 	smsHistories := assembleMultiHistory(allowed, contentArray, msgIDList, channel, name, template.Category, vendor.Name(), m.SMSStateUnchecked)
 	err = saveHistory(smsHistories)
 	if err != nil {
 		log.Error.Printf("failed to save MultiXSend history: %v\n", err)
-		return []string{}, []string{}, err
+		return []string{}, []string{}, []string{}, err
 	}
-	return msgIDList, contentArray, nil
+	return msgIDList, allowed, contentArray, nil
 }
 
 func generateSeqID() int64 {
