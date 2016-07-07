@@ -103,11 +103,11 @@ func (f *PostponeFilter) Resolve(expression string) (interface{}, error) {
 		return nil, ErrResolveFailed
 	}
 	prefix := time.Now().Format(DateLayout)
-	t1, err := time.Parse(DateAndTimeLayout, prefix+" "+exp.Begin)
+	t1, err := time.ParseInLocation(DateAndTimeLayout, prefix+" "+exp.Begin, time.Local)
 	if err != nil {
 		return nil, ErrResolveFailed
 	}
-	t2, err := time.Parse(DateAndTimeLayout, prefix+" "+exp.End)
+	t2, err := time.ParseInLocation(DateAndTimeLayout, prefix+" "+exp.End, time.Local)
 	if err != nil {
 		return nil, ErrResolveFailed
 	}
