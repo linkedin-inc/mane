@@ -16,6 +16,7 @@ const (
 	SMSStateUnchecked
 	SMSStateProcessed
 	SMSStateUnprocessed
+	SMSStateFailed
 )
 
 type SMSHistory struct {

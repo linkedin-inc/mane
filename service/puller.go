@@ -94,11 +94,12 @@ func processStatus(statuses []m.DeliveryStatus) {
 	checkedMsgIDs := []int64{}
 	processedMsgIDs := []int64{}
 	unprocessedMsgIDs := []int64{}
+	failedMsgIDs := []int64{}
 	//process status in loop! hmm, can process in batch?
 	for _, status := range statuses {
 		msgID := status.MsgID
 		var history m.SMSHistory
-		existed := mongodb.Exec(m.CollSMSHistory, func(c *mgo.Collection) error {
+		existed := mongodb.Read(m.CollSMSHistory, func(c *mgo.Collection) error {
 			return c.Find(bson.M{"msg_id": msgID}).One(&history)
 		})
 		if !existed {
@@ -119,7 +120,11 @@ func processStatus(statuses []m.DeliveryStatus) {
 				continue
 			}
 			if callback == nil {
-				checkedMsgIDs = append(checkedMsgIDs, msgID)
+				if status.StatusCode != 0 {
+					failedMsgIDs = append(failedMsgIDs, msgID)
+				} else {
+					checkedMsgIDs = append(checkedMsgIDs, msgID)
+				}
 				continue
 			}
 		} else {
@@ -135,7 +140,11 @@ func processStatus(statuses []m.DeliveryStatus) {
 				continue
 			}
 			if callback == nil {
-				checkedMsgIDs = append(checkedMsgIDs, msgID)
+				if status.StatusCode != 0 {
+					failedMsgIDs = append(failedMsgIDs, msgID)
+				} else {
+					checkedMsgIDs = append(checkedMsgIDs, msgID)
+				}
 				continue
 			}
 		}
@@ -154,6 +163,7 @@ func processStatus(statuses []m.DeliveryStatus) {
 			bson.M{"msg_id": &bson.M{"$in": checkedMsgIDs}}, bson.M{"$set": bson.M{"state": m.SMSStateChecked}},
 			bson.M{"msg_id": &bson.M{"$in": processedMsgIDs}}, bson.M{"$set": bson.M{"state": m.SMSStateProcessed}},
 			bson.M{"msg_id": &bson.M{"$in": unprocessedMsgIDs}}, bson.M{"$set": bson.M{"state": m.SMSStateUnprocessed}},
+			bson.M{"msg_id": &bson.M{"$in": failedMsgIDs}}, bson.M{"$set": bson.M{"state": m.SMSStateFailed}},
 		}
 		b.UpdateAll(params...)
 	})
