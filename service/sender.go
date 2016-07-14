@@ -32,6 +32,10 @@ var (
 
 //Push sms to phones directly with given content, will return MsgID and optional error
 func Push(channel t.Channel, category t.Category, content string, phoneArray []string) (string, error) {
+	if strings.TrimSpace(content) == "" {
+		log.Error.Println("Push empty content", channel, category, content, phoneArray)
+		panic("empty content")
+	}
 	log.Info.Printf("executed to push sms, phones: %v, content: %v\n", phoneArray, content)
 	vendor, err := v.GetByChannel(channel)
 	if err != nil {
@@ -67,6 +71,10 @@ func Push(channel t.Channel, category t.Category, content string, phoneArray []s
 func MultiXPush(channel t.Channel, category t.Category, contentArray, phoneArray []string) ([]string, error) {
 	if len(contentArray) != len(phoneArray) || len(contentArray) == 0 {
 		return []string{}, ErrInvalidVariables
+	}
+	if strings.TrimSpace(contentArray[0]) == "" {
+		log.Error.Println("MultiXPush empty content", channel, category, contentArray[0], phoneArray)
+		panic("empty content")
 	}
 	log.Info.Printf("executed to MultiXPush sms, phones: %v, content: %v\n", phoneArray, contentArray)
 	vendor, err := v.GetByChannel(channel)
