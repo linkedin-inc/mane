@@ -396,7 +396,7 @@ func (m Montnets) assembleMultiXSendRequest(msgIDArray []string, phoneArray []st
 	form.Add(formKeyPassword, m.Password)
 	multixmt := make([]string, len(msgIDArray))
 	for i := range msgIDArray {
-		multixmt = append(multixmt, msgIDArray[i]+"|"+"*"+"|"+phoneArray[i]+"|"+base64.StdEncoding.EncodeToString([]byte(mahonia.NewEncoder("GBK").ConvertString(contentArray[i]))))
+		multixmt[i] = msgIDArray[i] + "|" + "*" + "|" + phoneArray[i] + "|" + base64.StdEncoding.EncodeToString([]byte(mahonia.NewEncoder("GBK").ConvertString(contentArray[i])))
 	}
 	form.Add(formMultixmt, strings.Join(multixmt, ","))
 	return &form
