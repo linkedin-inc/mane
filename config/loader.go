@@ -7,6 +7,8 @@ import (
 	"linkedin/service/myredis"
 	"time"
 
+	"strconv"
+
 	f "github.com/linkedin-inc/mane/filter"
 	t "github.com/linkedin-inc/mane/template"
 	"gopkg.in/mgo.v2"
@@ -43,7 +45,7 @@ const (
 	CollSMSTemplate = "sms_template"
 	CollSMSCategory = "sms_category"
 	CollSMSStrategy = "sms_strategy"
-	EventQueue      = "sms_q"
+	EventQueue      = "sms_event_"
 )
 
 //Load configuration
@@ -63,8 +65,9 @@ func load() {
 func watch() {
 	redis := myredis.DefaultClient()
 	for {
-		result, err := redis.BLPop(time.Duration(0), EventQueue).Result()
-		if err != nil || len(result) != 2 || result[1] != EventQueue {
+		queueName := EventQueue + strconv.FormatInt(time.Now().UnixNano(), 10)
+		result, err := redis.BLPop(time.Duration(0), queueName).Result()
+		if err != nil || len(result) != 2 || result[1] != queueName {
 			//something wrong and watch again!
 			continue
 		}
