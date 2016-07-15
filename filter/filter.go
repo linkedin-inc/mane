@@ -81,7 +81,12 @@ var variablesHolder = make(map[string]map[string]string)
 
 func StoreVariables(phones []string, template t.Name, variables map[string]string) {
 	for _, phone := range phones {
-		variablesHolder[phone+":"+string(template)] = variables
+		key := phone + ":" + string(template)
+		_, ok := variablesHolder[key]
+		if ok {
+			continue
+		}
+		variablesHolder[key] = variables
 	}
 }
 
