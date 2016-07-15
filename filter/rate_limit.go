@@ -27,6 +27,7 @@ var ErrResolveFailed = errors.New("failed to resolve expression")
 //for further extention, RateLimitStrategy can hold bare script
 type RateLimitStrategy struct {
 	Duration time.Duration `json:"duration"`
+	Unit     string        `json:"unit"`
 	Count    uint32        `json:"count"`
 }
 
@@ -47,9 +48,30 @@ func (f *RateLimitFilter) Allow(phone string, template t.Name) bool {
 	if !existed {
 		return true
 	}
-	expiration := int64(strategy.Duration * time.Minute / time.Second)
+	var expiration int64
+	switch strategy.Unit {
+	case "s":
+	case "S":
+		expiration = int64(strategy.Duration * time.Second / time.Second)
+		break
+	case "m":
+	case "M":
+		expiration = int64(strategy.Duration * time.Minute / time.Second)
+		break
+	case "h":
+	case "H":
+		expiration = int64(strategy.Duration * time.Hour / time.Second)
+		break
+	case "d":
+	case "D":
+		expiration = int64(strategy.Duration * time.Hour * 24 / time.Second)
+		break
+	default:
+		log.Error.Printf("failed to calculate expiration due to invalid time unit")
+		return false
+	}
 	if !util.IsProduction() {
-		//ignore actual setting in non-production environment
+		//ignore actual setting in non-production environment and use 5 mins as default expiration
 		expiration = int64(5 * time.Minute / time.Second)
 	}
 	redisClient := myredis.DefaultClient()

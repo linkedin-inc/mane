@@ -9,6 +9,8 @@ import (
 
 	"strconv"
 
+	"os"
+
 	f "github.com/linkedin-inc/mane/filter"
 	t "github.com/linkedin-inc/mane/template"
 	"gopkg.in/mgo.v2"
@@ -65,7 +67,8 @@ func load() {
 func watch() {
 	redis := myredis.DefaultClient()
 	for {
-		queueName := EventQueue + strconv.FormatInt(time.Now().UnixNano(), 10)
+		queueName := EventQueue + strconv.Itoa(os.Getpid())
+		log.Info.Printf("I'm watching %v\n", queueName)
 		result, err := redis.BLPop(time.Duration(0), queueName).Result()
 		if err != nil || len(result) != 2 || result[1] != queueName {
 			//something wrong and watch again!
