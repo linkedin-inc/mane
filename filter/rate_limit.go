@@ -50,20 +50,16 @@ func (f *RateLimitFilter) Allow(phone string, template t.Name) bool {
 	}
 	var expiration int64
 	switch strategy.Unit {
-	case "s":
-	case "S":
+	case "s", "S":
 		expiration = int64(strategy.Duration * time.Second / time.Second)
 		break
-	case "m":
-	case "M":
+	case "m", "M":
 		expiration = int64(strategy.Duration * time.Minute / time.Second)
 		break
-	case "h":
-	case "H":
+	case "h", "H":
 		expiration = int64(strategy.Duration * time.Hour / time.Second)
 		break
-	case "d":
-	case "D":
+	case "d", "D":
 		expiration = int64(strategy.Duration * time.Hour * 24 / time.Second)
 		break
 	default:
