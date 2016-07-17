@@ -2,12 +2,12 @@ package filter
 
 import (
 	"encoding/json"
-	"linkedin/log"
 	"linkedin/util"
 	"linkedin/util/workername"
 	"time"
 
 	"github.com/linkedin-inc/go-workers"
+	"github.com/linkedin-inc/mane/logger"
 	m "github.com/linkedin-inc/mane/model"
 	t "github.com/linkedin-inc/mane/template"
 )
@@ -74,7 +74,7 @@ func postpone(when time.Time, phone string, template t.Name) {
 	}
 	_, err := workers.EnqueueAt(workername.SMSPostpone, "", when, job)
 	if err != nil {
-		log.Error.Printf("occur error when write queue to postpone: %v\n", err)
+		logger.E("occur error when write queue to postpone: %v\n", err)
 	}
 }
 
@@ -89,7 +89,7 @@ func (f *PostponeFilter) Apply(strategies []Strategy) {
 		resolved, err := f.Resolve(s.Expression)
 		if err != nil {
 			//FIXME discard when resolve failed?
-			log.Error.Printf("occur error when resolve strategy[%v] expression[%v]: %v\n", s.Type, s.Expression, err)
+			logger.E("occur error when resolve strategy[%v] expression[%v]: %v\n", s.Type, s.Expression, err)
 			continue
 		}
 		f.Strategies[s.Template] = resolved.(PostponeStrategy)

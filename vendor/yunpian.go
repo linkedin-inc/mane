@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"linkedin/log"
 	"linkedin/util"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/linkedin-inc/mane/logger"
 	m "github.com/linkedin-inc/mane/model"
 )
 
@@ -86,7 +86,7 @@ func (y Yunpian) Name() Name {
 func (y Yunpian) Send(seqID string, phoneArray []string, contentArray []string) error {
 	//only send in production environment
 	if !util.IsProduction() {
-		log.Info.Printf("discard due to not in production environment!")
+		logger.I("discard due to not in production environment!")
 		return ErrNotInProduction
 	}
 	form := y.assembleSendRequest(seqID, phoneArray, contentArray)
@@ -100,7 +100,7 @@ func (y Yunpian) Send(seqID string, phoneArray []string, contentArray []string) 
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
-		log.Error.Printf("failed to send sms: %v\n", err)
+		logger.E("failed to send sms: %v\n", err)
 		return err
 	}
 	if s := response.StatusCode; s != http.StatusOK {
@@ -130,11 +130,11 @@ func (y Yunpian) handleSendResponse(response *http.Response) error {
 	var body yunpianSendResponse
 	err := json.Unmarshal(data, &body)
 	if err != nil {
-		log.Error.Printf("occur error when handle send response: %v\n", err)
+		logger.E("occur error when handle send response: %v\n", err)
 		return err
 	}
 	if body.Code != 0 {
-		log.Error.Printf("send failed, %s, %s", body.Msg, body.Result)
+		logger.E("send failed, %s, %s", body.Msg, body.Result)
 		return ErrSendSMSFailed
 	}
 	return nil
@@ -147,16 +147,16 @@ func (y Yunpian) Status() ([]m.DeliveryStatus, error) {
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
-		log.Error.Printf("failed to check status: %v\n", err)
+		logger.E("failed to check status: %v\n", err)
 		return nil, ErrGetStatusFailed
 	}
 	if s := response.StatusCode; s != http.StatusOK {
-		log.Error.Printf("failed to check status: %d\n", s)
+		logger.E("failed to check status: %d\n", s)
 		return nil, ErrGetStatusFailed
 	}
 	status, err := y.handleStatusResponse(response)
 	if err != nil {
-		log.Error.Printf("failed to handle status response: %v\n", err)
+		logger.E("failed to handle status response: %v\n", err)
 		return nil, ErrGetStatusFailed
 	}
 	var parsedStatus []m.DeliveryStatus
@@ -177,18 +177,18 @@ func (y Yunpian) assemblePullRequest() *url.Values {
 func (y Yunpian) handleStatusResponse(response *http.Response) ([]status, error) {
 	defer func() {
 		if err := response.Body.Close(); err != nil {
-			log.Info.Printf("Close error %v\n", err)
+			logger.I("Close error %v\n", err)
 		}
 	}()
 	data, _ := ioutil.ReadAll(response.Body)
 	var body yunpianStatusResponse
 	err := json.Unmarshal(data, &body)
 	if err != nil {
-		log.Error.Printf("occur error when handle status response: %v\n", err)
+		logger.E("occur error when handle status response: %v\n", err)
 		return nil, err
 	}
 	if body.Code != 0 {
-		log.Error.Printf("check status failed, %s", body.Msg)
+		logger.E("check status failed, %s", body.Msg)
 		return nil, errors.New(body.Msg)
 	}
 	return body.SMSStatus, nil
@@ -199,7 +199,7 @@ func (y Yunpian) parseStatus(raw []status) []m.DeliveryStatus {
 	for _, aRawRecord := range raw {
 		timestamp, err := time.ParseInLocation("2006-01-02 15:04:05", aRawRecord.UserReceiveTime, time.Local)
 		if err != nil {
-			log.Error.Printf("failed to parse time: %v\n", err)
+			logger.E("failed to parse time: %v\n", err)
 			//discard and go ahead
 			continue
 		}
@@ -227,16 +227,16 @@ func (y Yunpian) Reply() ([]m.Reply, error) {
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
-		log.Error.Printf("failed to check status: %v\n", err)
+		logger.E("failed to check status: %v\n", err)
 		return nil, ErrGetReplyFailed
 	}
 	if s := response.StatusCode; s != http.StatusOK {
-		log.Error.Printf("failed to check status: %d\n", s)
+		logger.E("failed to check status: %d\n", s)
 		return nil, ErrGetReplyFailed
 	}
 	replies, err := y.handleReplyResponse(response)
 	if err != nil {
-		log.Error.Printf("failed to handle status response: %v\n", err)
+		logger.E("failed to handle status response: %v\n", err)
 		return nil, ErrGetReplyFailed
 	}
 	var parsedReplies []m.Reply
@@ -255,11 +255,11 @@ func (y Yunpian) handleReplyResponse(response *http.Response) ([]reply, error) {
 	var body replyResponse
 	err := json.Unmarshal(data, &body)
 	if err != nil {
-		log.Error.Printf("occur error when handle reply response: %v\n", err)
+		logger.E("occur error when handle reply response: %v\n", err)
 		return nil, err
 	}
 	if body.Code != 0 {
-		log.Error.Printf("pull reply failed, %s", body.Msg)
+		logger.E("pull reply failed, %s", body.Msg)
 		return nil, errors.New(body.Msg)
 	}
 	return body.SMSReply, nil
@@ -270,7 +270,7 @@ func (y Yunpian) parseReply(raw []reply) []m.Reply {
 	for _, aRawRecord := range raw {
 		timestamp, err := time.ParseInLocation("2006-01-02 15:04:05", aRawRecord.ReplyTime, time.Local)
 		if err != nil {
-			log.Error.Printf("failed to parse time: %v\n", err)
+			logger.E("failed to parse time: %v\n", err)
 			//discard and go ahead
 			continue
 		}

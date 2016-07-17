@@ -2,8 +2,8 @@ package filter
 
 import (
 	"errors"
-	"linkedin/log"
 
+	"github.com/linkedin-inc/mane/logger"
 	t "github.com/linkedin-inc/mane/template"
 )
 
@@ -118,7 +118,7 @@ func ProcessChain(phoneArray []string, template t.Name) []string {
 		}
 		allowed = append(allowed, phone)
 	}
-	log.Info.Printf("allowed: %v, not-allowed: %v\n", allowed, notAllowed)
+	logger.I("allowed: %v, not-allowed: %v\n", allowed, notAllowed)
 	return allowed
 }
 

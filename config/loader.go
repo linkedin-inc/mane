@@ -2,7 +2,6 @@ package config
 
 import (
 	"errors"
-	"linkedin/log"
 	"linkedin/service/mongodb"
 	"linkedin/service/myredis"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"os"
 
 	f "github.com/linkedin-inc/mane/filter"
+	"github.com/linkedin-inc/mane/logger"
 	t "github.com/linkedin-inc/mane/template"
 	"gopkg.in/mgo.v2"
 )
@@ -61,14 +61,14 @@ func load() {
 	loadTemplate()
 	loadCategory()
 	loadStrategy()
-	log.Info.Printf("loaded template: %v\nloaded category: %v\nloaded strategy: %v\n", LoadedTemplates, LoadedCategories, LoadedStrategies)
+	logger.I("loaded template: %v\nloaded category: %v\nloaded strategy: %v\n", LoadedTemplates, LoadedCategories, LoadedStrategies)
 }
 
 func watch() {
 	redis := myredis.DefaultClient()
 	for {
 		queueName := EventQueue + strconv.Itoa(os.Getpid())
-		log.Info.Printf("I'm watching %v\n", queueName)
+		logger.I("I'm watching %v\n", queueName)
 		result, err := redis.BLPop(time.Duration(0), queueName).Result()
 		if err != nil || len(result) != 2 || result[1] != queueName {
 			//something wrong and watch again!

@@ -2,13 +2,13 @@ package filter
 
 import (
 	"encoding/json"
-	"linkedin/log"
 	"linkedin/service/myredis"
 	"linkedin/util"
 	"strconv"
 	"time"
 
 	"github.com/go-errors/errors"
+	"github.com/linkedin-inc/mane/logger"
 	t "github.com/linkedin-inc/mane/template"
 )
 
@@ -63,7 +63,7 @@ func (f *RateLimitFilter) Allow(phone string, template t.Name) bool {
 		expiration = int64(strategy.Duration * time.Hour * 24 / time.Second)
 		break
 	default:
-		log.Error.Printf("failed to calculate expiration due to invalid time unit")
+		logger.E("failed to calculate expiration due to invalid time unit")
 		return false
 	}
 	if !util.IsProduction() {
@@ -74,7 +74,7 @@ func (f *RateLimitFilter) Allow(phone string, template t.Name) bool {
 	res, err := redisClient.Eval(Check, []string{"cnt_" + phone + "_" + string(template)}, []string{strconv.FormatInt(expiration, 10)}).Result()
 	if err != nil {
 		//FIXME should allow or discard when check failed?
-		log.Error.Printf("occur error when check allowed: %v\n", err)
+		logger.E("occur error when check allowed: %v\n", err)
 		return false
 	}
 	return res.(int64) <= int64(strategy.Count)
@@ -92,7 +92,7 @@ func (f *RateLimitFilter) Apply(strategies []Strategy) {
 		resolved, err := f.Resolve(strategy.Expression)
 		if err != nil {
 			//FIXME discard when resolve failed?
-			log.Error.Printf("occur error when resolve strategy[%v] expression[%v]: %v\n", strategy.Type, strategy.Expression, err)
+			logger.E("occur error when resolve strategy[%v] expression[%v]: %v\n", strategy.Type, strategy.Expression, err)
 			continue
 		}
 		f.Strategies[strategy.Template] = resolved.(RateLimitStrategy)

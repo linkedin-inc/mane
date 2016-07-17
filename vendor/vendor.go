@@ -2,9 +2,9 @@ package vendor
 
 import (
 	"errors"
-	"linkedin/log"
 
 	c "github.com/linkedin-inc/mane/config"
+	"github.com/linkedin-inc/mane/logger"
 	m "github.com/linkedin-inc/mane/model"
 	t "github.com/linkedin-inc/mane/template"
 )
@@ -37,7 +37,7 @@ func Prepare(config map[t.Channel]c.SMSConfig) {
 	for k, v := range config {
 		Register(k, NewMontnets(v.Username, v.Password, v.Endpoints[0], v.Endpoints[1], v.Endpoints[2], v.Endpoints[3]))
 	}
-	log.Info.Println("prepared vendors:", registry)
+	logger.I("prepared vendors:", registry)
 }
 
 type Name string

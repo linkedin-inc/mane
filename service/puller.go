@@ -1,13 +1,13 @@
 package service
 
 import (
-	"linkedin/log"
 	"linkedin/service/mongodb"
 	"strings"
 
 	"github.com/go-errors/errors"
 	cb "github.com/linkedin-inc/mane/callback"
 	c "github.com/linkedin-inc/mane/config"
+	"github.com/linkedin-inc/mane/logger"
 	m "github.com/linkedin-inc/mane/model"
 	t "github.com/linkedin-inc/mane/template"
 	v "github.com/linkedin-inc/mane/vendor"
@@ -26,14 +26,14 @@ var (
 func Pull(name v.Name) error {
 	vendors, err := v.GetByName(name)
 	if err != nil {
-		log.Error.Printf("occur error when find vendor %v : %v\n", name, err)
+		logger.E("occur error when find vendor %v : %v\n", name, err)
 		return err
 	}
 	for _, vendor := range vendors {
 		for {
 			statuses, err := fetchStatus(vendor)
 			if err != nil {
-				log.Error.Printf("failed to pull status from %v : %v\n", vendor.Name(), err)
+				logger.E("failed to pull status from %v : %v\n", vendor.Name(), err)
 				break
 			}
 			if len(statuses) == 0 {
@@ -44,7 +44,7 @@ func Pull(name v.Name) error {
 		for {
 			replies, err := fetchReply(vendor)
 			if err != nil {
-				log.Error.Printf("failed to pull reply from %v : %v\n", vendor.Name(), err)
+				logger.E("failed to pull reply from %v : %v\n", vendor.Name(), err)
 				break
 			}
 			if len(replies) == 0 {
@@ -52,7 +52,7 @@ func Pull(name v.Name) error {
 			}
 			err = saveReply(replies)
 			if err != nil {
-				log.Error.Printf("failed to save reply from %v : %v\n", vendor.Name(), err)
+				logger.E("failed to save reply from %v : %v\n", vendor.Name(), err)
 				break
 			}
 		}
@@ -63,12 +63,12 @@ func Pull(name v.Name) error {
 func fetchStatus(vendor v.Vendor) ([]m.DeliveryStatus, error) {
 	statuses, err := vendor.Status()
 	if err != nil {
-		log.Error.Printf("failed to pull status from %v : %v\n", vendor.Name(), err)
+		logger.E("failed to pull status from %v : %v\n", vendor.Name(), err)
 		return []m.DeliveryStatus{}, err
 	}
 	err = saveStatus(statuses)
 	if err != nil {
-		log.Error.Printf("failed to save status from %v : %v\n", vendor.Name(), err)
+		logger.E("failed to save status from %v : %v\n", vendor.Name(), err)
 	}
 	return statuses, nil
 }
@@ -76,12 +76,12 @@ func fetchStatus(vendor v.Vendor) ([]m.DeliveryStatus, error) {
 func fetchReply(vendor v.Vendor) ([]m.Reply, error) {
 	replies, err := vendor.Reply()
 	if err != nil {
-		log.Error.Printf("failed to pull reply from %v : %v\n", vendor.Name(), err)
+		logger.E("failed to pull reply from %v : %v\n", vendor.Name(), err)
 		return []m.Reply{}, err
 	}
 	err = saveReply(replies)
 	if err != nil {
-		log.Error.Printf("failed to save reply from %v : %v\n", vendor.Name(), err)
+		logger.E("failed to save reply from %v : %v\n", vendor.Name(), err)
 		return []m.Reply{}, err
 	}
 	return replies, nil
@@ -103,19 +103,19 @@ func processStatus(statuses []m.DeliveryStatus) {
 			return c.Find(bson.M{"msg_id": msgID}).One(&history)
 		})
 		if !existed {
-			log.Error.Printf("missing original sms history, MsgID: %d\n", msgID)
+			logger.E("missing original sms history, MsgID: %d\n", msgID)
 			continue
 		}
 		var callback cb.Callback
 		if t.Name(history.Template) == t.BlankName {
 			category, err1 := c.WhichCategory(t.Category(history.Category))
 			if err1 != nil {
-				log.Error.Printf("failed to find category: %v\n", err1)
+				logger.E("failed to find category: %v\n", err1)
 				continue
 			}
 			callback, err1 = cb.Lookup(category.Callback)
 			if err1 != nil {
-				log.Error.Printf("failed to lookup callback: %v\n", err1)
+				logger.E("failed to lookup callback: %v\n", err1)
 				unprocessedMsgIDs = append(unprocessedMsgIDs, msgID)
 				continue
 			}
@@ -130,12 +130,12 @@ func processStatus(statuses []m.DeliveryStatus) {
 		} else {
 			template, err2 := c.WhichTemplate(t.Name(history.Template))
 			if err2 != nil {
-				log.Error.Printf("failed to find template: %v\n", err2)
+				logger.E("failed to find template: %v\n", err2)
 				continue
 			}
 			callback, err2 = cb.Lookup(template.Callback)
 			if err2 != nil {
-				log.Error.Printf("failed to lookup callback: %v\n", err2)
+				logger.E("failed to lookup callback: %v\n", err2)
 				unprocessedMsgIDs = append(unprocessedMsgIDs, msgID)
 				continue
 			}
@@ -150,7 +150,7 @@ func processStatus(statuses []m.DeliveryStatus) {
 		}
 		err := callback(&status, &history)
 		if err != nil {
-			log.Error.Printf("error when invoke callback: %v\n", err)
+			logger.E("error when invoke callback: %v\n", err)
 			//TODO retry or discard?
 			unprocessedMsgIDs = append(unprocessedMsgIDs, msgID)
 			continue
@@ -216,7 +216,7 @@ func saveReply(replies []m.Reply) error {
 		return nil
 	})
 	if err != nil {
-		log.Error.Printf("occur error when save reply and unsubscriber: %v\n", err)
+		logger.E("occur error when save reply and unsubscriber: %v\n", err)
 		return err
 	}
 	return nil
