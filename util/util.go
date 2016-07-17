@@ -1,6 +1,7 @@
 package util
 
 import (
+	"os"
 	"strconv"
 	"time"
 )
@@ -29,4 +30,8 @@ func Atoi64Safe(s string, x int64) int64 {
 
 func CurrentTimeMillis() int64 {
 	return time.Now().UnixNano() / 1e6
+}
+
+func IsProduction() bool {
+	return os.Getenv("CHITU_ENV") == "production"
 }

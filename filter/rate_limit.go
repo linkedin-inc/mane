@@ -2,24 +2,12 @@ package filter
 
 import (
 	"encoding/json"
-	"linkedin/service/myredis"
-	"linkedin/util"
-	"strconv"
 	"time"
 
 	"github.com/go-errors/errors"
 	"github.com/linkedin-inc/mane/logger"
 	t "github.com/linkedin-inc/mane/template"
-)
-
-const (
-	Check = `
-	local count = tonumber(redis.call("INCR", KEYS[1]))
-	if count == 1 then
-		redis.call("EXPIRE", KEYS[1], tonumber(ARGV[1]))
-	end
-	return count
-	`
+	"github.com/linkedin-inc/mane/util"
 )
 
 var ErrResolveFailed = errors.New("failed to resolve expression")
@@ -41,6 +29,16 @@ func NewRateLimitFilter() *RateLimitFilter {
 		Type:       FilterTypeRateLimit,
 		Strategies: make(map[t.Name]RateLimitStrategy),
 	}
+}
+
+type RateLimitChecker interface {
+	IsExceeded(key string, expiration, threshold int64) bool
+}
+
+var checker RateLimitChecker
+
+func RegisterRateLimitChecker(c RateLimitChecker) {
+	checker = c
 }
 
 func (f *RateLimitFilter) Allow(phone string, template t.Name) bool {
@@ -70,14 +68,7 @@ func (f *RateLimitFilter) Allow(phone string, template t.Name) bool {
 		//ignore actual setting in non-production environment and use 5 mins as default expiration
 		expiration = int64(5 * time.Minute / time.Second)
 	}
-	redisClient := myredis.DefaultClient()
-	res, err := redisClient.Eval(Check, []string{"cnt_" + phone + "_" + string(template)}, []string{strconv.FormatInt(expiration, 10)}).Result()
-	if err != nil {
-		//FIXME should allow or discard when check failed?
-		logger.E("occur error when check allowed: %v\n", err)
-		return false
-	}
-	return res.(int64) <= int64(strategy.Count)
+	return checker("cnt_"+phone+"_"+string(template), expiration, int64(strategy.Count))
 }
 
 func (f *RateLimitFilter) WhichType() Type {

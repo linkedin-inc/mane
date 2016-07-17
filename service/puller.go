@@ -177,12 +177,7 @@ func saveStatus(statuses []m.DeliveryStatus) error {
 	for i, status := range statuses {
 		interfaces[i] = status
 	}
-	var err error
-	_ = mongodb.Exec(m.CollSMStatus, func(c *mgo.Collection) error {
-		err = c.Insert(interfaces...)
-		return err
-	})
-	return err
+	return saver.Save(m.CollSMStatus, interfaces)
 }
 
 func saveReply(replies []m.Reply) error {

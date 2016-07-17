@@ -2,14 +2,14 @@ package filter
 
 import (
 	"encoding/json"
-	"linkedin/util"
-	"linkedin/util/workername"
 	"time"
 
 	"github.com/linkedin-inc/go-workers"
+	"github.com/linkedin-inc/mane/constant"
 	"github.com/linkedin-inc/mane/logger"
 	m "github.com/linkedin-inc/mane/model"
 	t "github.com/linkedin-inc/mane/template"
+	"github.com/linkedin-inc/mane/util"
 )
 
 const (
@@ -72,7 +72,7 @@ func postpone(when time.Time, phone string, template t.Name) {
 		Template:  string(template),
 		Variables: v,
 	}
-	_, err := workers.EnqueueAt(workername.SMSPostpone, "", when, job)
+	_, err := workers.EnqueueAt(constant.PostponeQueue, "", when, job)
 	if err != nil {
 		logger.E("occur error when write queue to postpone: %v\n", err)
 	}

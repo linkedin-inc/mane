@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"linkedin/service/mongodb"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -18,7 +17,6 @@ import (
 	t "github.com/linkedin-inc/mane/template"
 	u "github.com/linkedin-inc/mane/util"
 	v "github.com/linkedin-inc/mane/vendor"
-	"gopkg.in/mgo.v2"
 )
 
 var (
@@ -315,12 +313,7 @@ func saveHistory(histories []interface{}) error {
 	if len(histories) == 0 {
 		return nil
 	}
-	var err error
-	_ = mongodb.Exec(m.CollSMSHistory, func(c *mgo.Collection) error {
-		err = c.Insert(histories...)
-		return err
-	})
-	return err
+	return saver.Save(m.CollSMSHistory, histories)
 }
 
 func assembleTemplate(content string, variables map[string]string) (string, error) {

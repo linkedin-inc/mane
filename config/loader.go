@@ -2,18 +2,11 @@ package config
 
 import (
 	"errors"
-	"linkedin/service/mongodb"
-	"linkedin/service/myredis"
 	"time"
-
-	"strconv"
-
-	"os"
 
 	f "github.com/linkedin-inc/mane/filter"
 	"github.com/linkedin-inc/mane/logger"
 	t "github.com/linkedin-inc/mane/template"
-	"gopkg.in/mgo.v2"
 )
 
 type SMSConfig struct {
@@ -64,14 +57,20 @@ func load() {
 	logger.I("loaded template: %v\nloaded category: %v\nloaded strategy: %v\n", LoadedTemplates, LoadedCategories, LoadedStrategies)
 }
 
+type Watcher interface {
+	Watch() error
+}
+
+var watcher Watcher
+
+func RegisterWatcher(w Watcher) {
+	watcher = w
+}
+
 func watch() {
-	redis := myredis.DefaultClient()
 	for {
-		queueName := EventQueue + strconv.Itoa(os.Getpid())
-		logger.I("I'm watching %v\n", queueName)
-		result, err := redis.BLPop(time.Duration(0), queueName).Result()
-		if err != nil || len(result) != 2 || result[1] != queueName {
-			//something wrong and watch again!
+		err := watcher.Watch()
+		if err != nil {
 			continue
 		}
 		hole <- time.Now().UnixNano()
@@ -85,12 +84,21 @@ func reload() {
 	}
 }
 
+type ConfigLoader interface {
+	LoadCategory() []t.SMSCategory
+	LoadTemplate() []t.SMSTemplate
+	LoadStrategy() []f.Strategy
+}
+
+var loader ConfigLoader
+
+func RegisterLoader(configLoader ConfigLoader) {
+	loader = configLoader
+}
+
 func loadCategory() {
-	var categories []t.SMSCategory
-	existed := mongodb.Exec(CollSMSCategory, func(c *mgo.Collection) error {
-		return c.Find(nil).Sort("-timestamp").All(&categories)
-	})
-	if !existed || len(categories) == 0 {
+	categories := loader.LoadCategory()
+	if len(categories) == 0 {
 		panic(ErrLoadCategoryFailed)
 	}
 	for _, category := range categories {
@@ -100,11 +108,8 @@ func loadCategory() {
 }
 
 func loadTemplate() {
-	var templates []t.SMSTemplate
-	existed := mongodb.Exec(CollSMSTemplate, func(c *mgo.Collection) error {
-		return c.Find(nil).Sort("-timestamp").All(&templates)
-	})
-	if !existed || len(templates) == 0 {
+	templates := loader.LoadTemplate()
+	if len(templates) == 0 {
 		panic(ErrLoadTemplateFailed)
 	}
 	for _, template := range templates {
@@ -113,15 +118,12 @@ func loadTemplate() {
 }
 
 func loadStrategy() {
-	var strategies []f.Strategy
-	existed := mongodb.Exec(CollSMSStrategy, func(c *mgo.Collection) error {
-		return c.Find(nil).All(&strategies)
-	})
-	if !existed || len(strategies) == 0 {
+	strategies := loader.LoadStrategy()
+	if len(strategies) == 0 {
 		panic(ErrLoadStrategyFailed)
 	}
 	for _, strategy := range strategies {
-		//FIXME only return enabled strategy?
+		//only return enabled strategy
 		if !strategy.Enabled {
 			continue
 		}
@@ -150,7 +152,7 @@ func WhichTemplate(name t.Name) (*t.SMSTemplate, error) {
 	if !existed {
 		return nil, ErrTemplateNotFound
 	}
-	//FIXME only return enabled template?
+	//only return enabled template
 	if !smsTemplate.Enabled {
 		return nil, ErrTemplateNotAvailable
 	}
