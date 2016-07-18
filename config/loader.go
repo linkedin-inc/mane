@@ -2,7 +2,6 @@ package config
 
 import (
 	"errors"
-	"time"
 
 	f "github.com/linkedin-inc/mane/filter"
 	"github.com/linkedin-inc/mane/logger"
@@ -58,7 +57,7 @@ func load() {
 }
 
 type Watcher interface {
-	Watch() error
+	Watch(c chan int64)
 }
 
 var watcher Watcher
@@ -68,13 +67,7 @@ func RegisterWatcher(w Watcher) {
 }
 
 func watch() {
-	for {
-		err := watcher.Watch()
-		if err != nil {
-			continue
-		}
-		hole <- time.Now().UnixNano()
-	}
+	watcher.Watch(hole)
 }
 
 func reload() {
