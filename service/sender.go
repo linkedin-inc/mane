@@ -30,10 +30,6 @@ var (
 
 //Push sms to phones directly with given content, will return MsgID and optional error
 func Push(channel t.Channel, category t.Category, content string, phoneArray []string) (string, error) {
-	if strings.TrimSpace(content) == "" {
-		logger.E("discard due to empty content, channel: %v, category: %v, phones: %v\n", channel, category, phoneArray)
-		return "", ErrInvalidVariables
-	}
 	logger.I("executed to push sms, phones: %v, content: %v\n", phoneArray, content)
 	vendor, err := v.GetByChannel(channel)
 	if err != nil {
@@ -68,10 +64,6 @@ func Push(channel t.Channel, category t.Category, content string, phoneArray []s
 //Batch sending group sms with different contents, will return the corresponding MsgID Array and the error
 func MultiXPush(channel t.Channel, category t.Category, contentArray, phoneArray []string) ([]string, error) {
 	if len(contentArray) != len(phoneArray) || len(contentArray) == 0 {
-		return nil, ErrInvalidVariables
-	}
-	if strings.TrimSpace(contentArray[0]) == "" {
-		logger.E("discard due to empty content, channel: %v, category: %v, phones: %v\n", channel, category, phoneArray)
 		return nil, ErrInvalidVariables
 	}
 	logger.I("executed to MultiXPush sms, phones: %v, content: %v\n", phoneArray, contentArray)
