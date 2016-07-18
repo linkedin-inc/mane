@@ -37,7 +37,7 @@ func Prepare(config map[t.Channel]c.SMSConfig) {
 	for k, v := range config {
 		Register(k, NewMontnets(v.Username, v.Password, v.Endpoints[0], v.Endpoints[1], v.Endpoints[2], v.Endpoints[3]))
 	}
-	logger.I("prepared vendors:", registry)
+	logger.I("prepared vendors:%v", registry)
 }
 
 type Name string
