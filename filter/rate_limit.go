@@ -7,7 +7,6 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/linkedin-inc/mane/logger"
 	t "github.com/linkedin-inc/mane/template"
-	"github.com/linkedin-inc/mane/util"
 )
 
 var ErrResolveFailed = errors.New("failed to resolve expression")
@@ -63,10 +62,6 @@ func (f *RateLimitFilter) Allow(phone string, template t.Name) bool {
 	default:
 		logger.E("failed to calculate expiration due to invalid time unit")
 		return false
-	}
-	if !util.IsProduction() {
-		//ignore actual setting in non-production environment and use 5 mins as default expiration
-		expiration = int64(5 * time.Minute / time.Second)
 	}
 	return ratelimitChecker.IsExceeded("cnt_"+phone+"_"+string(template), expiration, int64(strategy.Count))
 }

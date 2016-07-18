@@ -9,7 +9,6 @@ import (
 	"github.com/linkedin-inc/mane/logger"
 	m "github.com/linkedin-inc/mane/model"
 	t "github.com/linkedin-inc/mane/template"
-	"github.com/linkedin-inc/mane/util"
 )
 
 const (
@@ -43,10 +42,6 @@ func NewPostponeFilter() *PostponeFilter {
 func (f *PostponeFilter) Allow(phone string, template t.Name) bool {
 	strategy, existed := f.Strategies[template]
 	if !existed {
-		return true
-	}
-	if !util.IsProduction() {
-		//ignore postpone on non-production environment
 		return true
 	}
 	now := time.Now()
