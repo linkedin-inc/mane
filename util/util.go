@@ -12,7 +12,7 @@ func Atoi64(s string) int64 {
 	}
 	i, err := strconv.ParseInt(s, 10, 0)
 	if err != nil {
-		panic(err)
+		return 0
 	}
 	return i
 }

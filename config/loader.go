@@ -99,7 +99,8 @@ func RegisterLoader(configLoader ConfigLoader) {
 func loadCategory() {
 	categories := loader.LoadCategory()
 	if len(categories) == 0 {
-		panic(ErrLoadCategoryFailed)
+		logger.E("loaded category: %v, it seems empty, are you sure?", categories)
+		return
 	}
 	for _, category := range categories {
 		LoadedChannels[category.Name] = category.Channel
@@ -110,7 +111,8 @@ func loadCategory() {
 func loadTemplate() {
 	templates := loader.LoadTemplate()
 	if len(templates) == 0 {
-		panic(ErrLoadTemplateFailed)
+		logger.E("loaded template: %v, it seems empty, are you sure?", templates)
+		return
 	}
 	for _, template := range templates {
 		LoadedTemplates[template.Name] = template
@@ -120,7 +122,8 @@ func loadTemplate() {
 func loadStrategy() {
 	strategies := loader.LoadStrategy()
 	if len(strategies) == 0 {
-		panic(ErrLoadStrategyFailed)
+		logger.E("loaded strategy: %v, it seems empty, are you sure?", strategies)
+		return
 	}
 	for _, strategy := range strategies {
 		//only return enabled strategy
