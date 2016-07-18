@@ -16,14 +16,14 @@ type UnsubscribeChecker interface {
 	Exists(key string) bool
 }
 
-var checker UnsubscribeChecker
+var unsubscribechecker UnsubscribeChecker
 
 func RegisterUnsubscribeChecker(c UnsubscribeChecker) {
-	checker = c
+	unsubscribechecker = c
 }
 
 func (f *UnsubscribeFilter) Allow(phone string, template t.Name) bool {
-	return !checker.Exists(phone)
+	return !unsubscribechecker.Exists(phone)
 }
 
 func (f *UnsubscribeFilter) WhichType() Type {

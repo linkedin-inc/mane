@@ -35,10 +35,10 @@ type RateLimitChecker interface {
 	IsExceeded(key string, expiration, threshold int64) bool
 }
 
-var checker RateLimitChecker
+var ratelimitChecker RateLimitChecker
 
 func RegisterRateLimitChecker(c RateLimitChecker) {
-	checker = c
+	ratelimitChecker = c
 }
 
 func (f *RateLimitFilter) Allow(phone string, template t.Name) bool {
@@ -68,7 +68,7 @@ func (f *RateLimitFilter) Allow(phone string, template t.Name) bool {
 		//ignore actual setting in non-production environment and use 5 mins as default expiration
 		expiration = int64(5 * time.Minute / time.Second)
 	}
-	return checker("cnt_"+phone+"_"+string(template), expiration, int64(strategy.Count))
+	return ratelimitChecker.IsExceeded("cnt_"+phone+"_"+string(template), expiration, int64(strategy.Count))
 }
 
 func (f *RateLimitFilter) WhichType() Type {

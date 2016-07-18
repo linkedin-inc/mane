@@ -22,11 +22,11 @@ func init() {
 	}
 }
 
-func initLogger(dbg, inf, err io.Writer) {
+func initLogger(debug, info, error io.Writer) {
 	format := log.Ldate | log.Ltime
-	dbg = log.New(dbg, "[DEBUG]: ", format|log.Lshortfile)
-	inf = log.New(inf, "[INFO]: ", format)
-	err = log.New(err, "[ERROR]: ", format|log.Llongfile)
+	dbg = log.New(debug, "[DEBUG]: ", format|log.Lshortfile)
+	inf = log.New(info, "[INFO]: ", format)
+	err = log.New(error, "[ERROR]: ", format|log.Llongfile)
 }
 
 func I(format string, args ...interface{}) {
