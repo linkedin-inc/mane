@@ -45,13 +45,15 @@ func (f *PostponeFilter) Allow(phone string, template t.Name) bool {
 		return true
 	}
 	now := time.Now()
-	if now.After(strategy.Begin) && now.Before(strategy.End) {
+	begin := time.Date(now.Year(), now.Month(), now.Day(), strategy.Begin.Hour(), strategy.Begin.Minute(), strategy.Begin.Second(), strategy.Begin.Nanosecond(), strategy.Begin.Location())
+	end := time.Date(now.Year(), now.Month(), now.Day(), strategy.End.Hour(), strategy.End.Minute(), strategy.End.Second(), strategy.End.Nanosecond(), strategy.End.Location())
+	if now.After(begin) && now.Before(end) {
 		return true
 	}
-	if now.Before(strategy.Begin) {
-		postpone(strategy.Begin, phone, template)
-	} else if now.After(strategy.End) {
-		postpone(strategy.Begin.Add(time.Hour*24), phone, template)
+	if now.Before(begin) {
+		postpone(begin, phone, template)
+	} else if now.After(end) {
+		postpone(begin.Add(time.Hour*24), phone, template)
 	}
 	return false
 }
