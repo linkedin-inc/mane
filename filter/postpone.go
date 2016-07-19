@@ -55,6 +55,7 @@ func (f *PostponeFilter) Allow(phone string, template t.Name) bool {
 	} else if now.After(end) {
 		postpone(begin.Add(time.Hour*24), phone, template)
 	}
+	logger.I("[sms] phone:%s template:%v prevented by PostponeFilter, now:%v, begin:%v, end:%v", phone, template, now, begin, end)
 	return false
 }
 

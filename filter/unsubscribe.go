@@ -1,6 +1,9 @@
 package filter
 
-import t "github.com/linkedin-inc/mane/template"
+import (
+	"github.com/linkedin-inc/mane/logger"
+	t "github.com/linkedin-inc/mane/template"
+)
 
 type UnsubscribeFilter struct {
 	Type Type `bson:"type" json:"type"`
@@ -23,7 +26,11 @@ func RegisterUnsubscribeChecker(c UnsubscribeChecker) {
 }
 
 func (f *UnsubscribeFilter) Allow(phone string, template t.Name) bool {
-	return !unsubscribechecker.Exists(phone)
+	if unsubscribechecker.Exists(phone) {
+		logger.I("[sms] phone:%s template:%v prevented by UnsubscribeFilter", phone, template)
+		return false
+	}
+	return true
 }
 
 func (f *UnsubscribeFilter) WhichType() Type {

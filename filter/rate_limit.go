@@ -63,7 +63,12 @@ func (f *RateLimitFilter) Allow(phone string, template t.Name) bool {
 		logger.E("failed to calculate expiration due to invalid time unit")
 		return false
 	}
-	return ratelimitChecker.IsExceeded("cnt_"+phone+"_"+string(template), expiration, int64(strategy.Count))
+	key := "cnt_" + phone + "_" + string(template)
+	if ratelimitChecker.IsExceeded(key, expiration, int64(strategy.Count)) {
+		return true
+	}
+	logger.I("[sms] phone:%s template:%v prevented by RateLimitFilter, key:%s, strategy.Count:%d, expiration:%d", phone, template, key, int64(strategy.Count), expiration)
+	return false
 }
 
 func (f *RateLimitFilter) WhichType() Type {
