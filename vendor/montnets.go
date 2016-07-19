@@ -33,6 +33,7 @@ const (
 	requestTypeStatus  = "2"
 	maxSendNumEachTime = 100 // limited by the vendor
 	poolSize           = 10
+	retryTimes         = 4
 )
 
 var (
@@ -114,15 +115,24 @@ func (m Montnets) Send(seqID string, phoneArray []string, contentArray []string)
 			if start >= end {
 				return
 			}
-			logger.D("start sending sms, current step:%d, start:%d, end:%d", currentStep, start, end)
-			request := m.assembleSendRequest(seqID, phoneArray[start:end], contentArray[0])
-			response, err := http.PostForm(m.SendEndpoint, *request)
-			if err != nil {
-				logger.E("failed to send sms[%d:%d]: %v\n", start, end, err)
-				if finalError == nil {
-					finalError = err
+			var response *http.Response
+			var err error
+			for i := 0; i < retryTimes; i++ {
+				logger.I("start sending sms, current step:%d, start:%d, end:%d, retryTimes:%d", currentStep, start, end, i)
+				request := m.assembleSendRequest(seqID, phoneArray[start:end], contentArray[0])
+				response, err = http.PostForm(m.SendEndpoint, *request)
+				if err != nil {
+					logger.E("retryTimes:%d, failed to send sms[%d:%d]: %v\n", i, start, end, err)
+					if i == retryTimes-1 {
+						if finalError == nil {
+							finalError = err
+						}
+						return
+					}
+					time.Sleep(time.Second)
+				} else {
+					break
 				}
-				return
 			}
 			if s := response.StatusCode; s != http.StatusOK {
 				if finalError == nil {
@@ -359,15 +369,24 @@ func (m Montnets) MultiXSend(msgIDArray []string, phoneArray []string, contentAr
 			if start >= end {
 				return
 			}
-			logger.D("start sending multiX sms, current step:%d, start:%d, end:%d", currentStep, start, end)
-			request := m.assembleMultiXSendRequest(msgIDArray[start:end], phoneArray[start:end], contentArray[start:end])
-			response, err := http.PostForm(m.MultiXSendPoint, *request)
-			if err != nil {
-				logger.E("failed to send multiX sms[%d:%d]: %v\n", start, end, err)
-				if finalError == nil {
-					finalError = err
+			var response *http.Response
+			var err error
+			for i := 0; i < retryTimes; i++ {
+				logger.I("start sending multiX sms, current step:%d, start:%d, end:%d, retryTimes:%d", currentStep, start, end, i)
+				request := m.assembleMultiXSendRequest(msgIDArray[start:end], phoneArray[start:end], contentArray[start:end])
+				response, err = http.PostForm(m.MultiXSendPoint, *request)
+				if err != nil {
+					logger.E("retryTimes:%d, failed to send multiX sms[%d:%d]: %v\n", i, start, end, err)
+					if i == retryTimes-1 {
+						if finalError == nil {
+							finalError = err
+						}
+						return
+					}
+					time.Sleep(time.Second)
+				} else {
+					break
 				}
-				return
 			}
 			if s := response.StatusCode; s != http.StatusOK {
 				if finalError == nil {
