@@ -90,6 +90,7 @@ func RegisterLoader(configLoader ConfigLoader) {
 }
 
 func loadCategory() {
+	LoadedCategories = make(map[t.Category]t.SMSCategory)
 	categories := loader.LoadCategory()
 	if len(categories) == 0 {
 		logger.E("loaded category: %v, it seems empty, are you sure?", categories)
@@ -102,6 +103,7 @@ func loadCategory() {
 }
 
 func loadTemplate() {
+	LoadedTemplates = make(map[t.Name]t.SMSTemplate)
 	templates := loader.LoadTemplate()
 	if len(templates) == 0 {
 		logger.E("loaded template: %v, it seems empty, are you sure?", templates)
@@ -113,6 +115,7 @@ func loadTemplate() {
 }
 
 func loadStrategy() {
+	LoadedStrategies = make(map[f.Type][]f.Strategy)
 	strategies := loader.LoadStrategy()
 	if len(strategies) == 0 {
 		logger.E("loaded strategy: %v, it seems empty, are you sure?", strategies)
