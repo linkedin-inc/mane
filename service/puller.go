@@ -95,9 +95,16 @@ func processStatus(statuses []m.DeliveryStatus) {
 	processedMsgIDs := []int64{}
 	unprocessedMsgIDs := []int64{}
 	failedMsgIDs := []int64{}
+
+	checkedPhones := []string{}
+	processedPhones := []string{}
+	unprocessedPhones := []string{}
+	failedPhones := []string{}
+
 	//process status in loop! hmm, can process in batch?
 	for _, status := range statuses {
 		msgID := status.MsgID
+		phone := status.Phone
 		var history m.SMSHistory
 		existed := mongodb.Read(m.CollSMSHistory, func(c *mgo.Collection) error {
 			return c.Find(bson.M{"msg_id": msgID}).One(&history)
@@ -117,13 +124,16 @@ func processStatus(statuses []m.DeliveryStatus) {
 			if err1 != nil {
 				logger.E("failed to lookup callback: %v\n", err1)
 				unprocessedMsgIDs = append(unprocessedMsgIDs, msgID)
+				unprocessedPhones = append(unprocessedPhones, phone)
 				continue
 			}
 			if callback == nil {
 				if status.StatusCode != 0 {
 					failedMsgIDs = append(failedMsgIDs, msgID)
+					failedPhones = append(failedPhones, phone)
 				} else {
 					checkedMsgIDs = append(checkedMsgIDs, msgID)
+					checkedPhones = append(checkedPhones, phone)
 				}
 				continue
 			}
@@ -137,13 +147,16 @@ func processStatus(statuses []m.DeliveryStatus) {
 			if err2 != nil {
 				logger.E("failed to lookup callback: %v\n", err2)
 				unprocessedMsgIDs = append(unprocessedMsgIDs, msgID)
+				unprocessedPhones = append(unprocessedPhones, phone)
 				continue
 			}
 			if callback == nil {
 				if status.StatusCode != 0 {
 					failedMsgIDs = append(failedMsgIDs, msgID)
+					failedPhones = append(failedPhones, phone)
 				} else {
 					checkedMsgIDs = append(checkedMsgIDs, msgID)
+					checkedPhones = append(checkedPhones, phone)
 				}
 				continue
 			}
@@ -153,17 +166,19 @@ func processStatus(statuses []m.DeliveryStatus) {
 			logger.E("error when invoke callback: %v\n", err)
 			//TODO retry or discard?
 			unprocessedMsgIDs = append(unprocessedMsgIDs, msgID)
+			unprocessedPhones = append(unprocessedPhones, phone)
 			continue
 		}
 		processedMsgIDs = append(processedMsgIDs, msgID)
+		processedPhones = append(processedPhones, phone)
 	}
 	//update state
 	mongodb.ExecBulk(mongodb.GetMgoSession(), m.CollSMSHistory, func(b *mgo.Bulk) {
 		params := []interface{}{
-			bson.M{"msg_id": &bson.M{"$in": checkedMsgIDs}}, bson.M{"$set": bson.M{"state": m.SMSStateChecked}},
-			bson.M{"msg_id": &bson.M{"$in": processedMsgIDs}}, bson.M{"$set": bson.M{"state": m.SMSStateProcessed}},
-			bson.M{"msg_id": &bson.M{"$in": unprocessedMsgIDs}}, bson.M{"$set": bson.M{"state": m.SMSStateUnprocessed}},
-			bson.M{"msg_id": &bson.M{"$in": failedMsgIDs}}, bson.M{"$set": bson.M{"state": m.SMSStateFailed}},
+			bson.M{"msg_id": bson.M{"$in": checkedMsgIDs}, "phone": bson.M{"$in": checkedPhones}}, bson.M{"$set": bson.M{"state": m.SMSStateChecked}},
+			bson.M{"msg_id": bson.M{"$in": processedMsgIDs}, "phone": bson.M{"$in": processedMsgIDs}}, bson.M{"$set": bson.M{"state": m.SMSStateProcessed}},
+			bson.M{"msg_id": bson.M{"$in": unprocessedMsgIDs}, "phone": bson.M{"$in": unprocessedPhones}}, bson.M{"$set": bson.M{"state": m.SMSStateUnprocessed}},
+			bson.M{"msg_id": bson.M{"$in": failedMsgIDs}, "phone": bson.M{"$in": failedPhones}}, bson.M{"$set": bson.M{"state": m.SMSStateFailed}},
 		}
 		b.UpdateAll(params...)
 	})
