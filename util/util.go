@@ -3,19 +3,9 @@ package util
 import (
 	"os"
 	"strconv"
-	"time"
-)
 
-func Atoi64(s string) int64 {
-	if s == "" {
-		return 0
-	}
-	i, err := strconv.ParseInt(s, 10, 0)
-	if err != nil {
-		return 0
-	}
-	return i
-}
+	"github.com/linkedin-inc/mane/logger"
+)
 
 func Atoi64Safe(s string, x int64) int64 {
 	if s == "" {
@@ -23,13 +13,24 @@ func Atoi64Safe(s string, x int64) int64 {
 	}
 	i, err := strconv.ParseInt(s, 10, 0)
 	if err != nil {
+		logger.E("[panic] parse atoi64 s:%s, err:%v\n", s, err)
 		return x
 	}
 	return i
 }
 
-func CurrentTimeMillis() int64 {
-	return time.Now().UnixNano() / 1e6
+// Atoi32 convert string to i32 without panic
+func Atoi32Safe(s string, defaultVal int32) int32 {
+	if s == "" {
+		return defaultVal
+	}
+
+	i, err := strconv.ParseInt(s, 10, 32)
+	if err != nil {
+		logger.E("[panic] parse atoi32 s:%s, err:%v\n", s, err)
+		return defaultVal
+	}
+	return int32(i)
 }
 
 func IsProduction() bool {

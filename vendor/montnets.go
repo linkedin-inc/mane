@@ -5,7 +5,6 @@ import (
 	"encoding/xml"
 	"errors"
 	"io/ioutil"
-	"linkedin/util"
 	"math"
 	"net/http"
 	"net/url"
@@ -93,7 +92,7 @@ func (m Montnets) Send(seqID string, phoneArray []string, contentArray []string)
 		return ErrIllegalParameter
 	}
 	//only send in production environment
-	if !util.IsProduction() {
+	if !u.IsProduction() {
 		logger.I("discard due to not in production environment!")
 		return ErrNotInProduction
 	}
@@ -239,6 +238,11 @@ func (m Montnets) parseStatus(raw []string) []mo.DeliveryStatus {
 	var statuses []mo.DeliveryStatus
 	for _, rawRecord := range raw {
 		splited := strings.Split(rawRecord, ",")
+		// avoid out of range panic
+		if len(splited) != 9 {
+			logger.E("err response:%s\n", rawRecord)
+			continue
+		}
 		timestamp, err := time.ParseInLocation("2006-01-02 15:04:05", splited[1], time.Local)
 		if err != nil {
 			logger.E("failed to parse time: %v\n", err)
@@ -246,10 +250,10 @@ func (m Montnets) parseStatus(raw []string) []mo.DeliveryStatus {
 			continue
 		}
 		status := mo.DeliveryStatus{
-			MsgID:      util.Atoi64(splited[5]),
+			MsgID:      u.Atoi64Safe(splited[5], -1),
 			Timestamp:  timestamp,
 			Phone:      splited[4],
-			StatusCode: util.Atoi32(splited[7]),
+			StatusCode: u.Atoi32Safe(splited[7], -1),
 		}
 		//omit fixed detail msg like 'DELIVERED'
 		if splited[7] != "0" {
@@ -344,7 +348,7 @@ func (m Montnets) handleBalanceResponse(response *http.Response) (string, error)
 
 func (m Montnets) MultiXSend(msgIDArray []string, phoneArray []string, contentArray []string) error {
 	//only send in production environment
-	if !util.IsProduction() {
+	if !u.IsProduction() {
 		logger.I("discard due to not in production environment!")
 		return ErrNotInProduction
 	}

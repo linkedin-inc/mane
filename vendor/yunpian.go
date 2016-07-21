@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"linkedin/util"
 	"net/http"
 	"net/url"
 	"strings"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/linkedin-inc/mane/logger"
 	m "github.com/linkedin-inc/mane/model"
+	"github.com/linkedin-inc/mane/util"
 )
 
 const (
@@ -204,7 +204,7 @@ func (y Yunpian) parseStatus(raw []status) []m.DeliveryStatus {
 			continue
 		}
 		status := m.DeliveryStatus{
-			MsgID:      util.Atoi64(aRawRecord.UID),
+			MsgID:      util.Atoi64Safe(aRawRecord.UID, -1),
 			Timestamp:  timestamp,
 			Phone:      aRawRecord.Mobile,
 			StatusCode: 0,
