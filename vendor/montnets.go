@@ -376,7 +376,7 @@ func (m Montnets) MultiXSend(msgIDArray []string, phoneArray []string, contentAr
 			var response *http.Response
 			var err error
 			for i := 0; i < retryTimes; i++ {
-				logger.I("start sending multiX sms, current step:%d, start:%d, end:%d, retryTimes:%d", currentStep, start, end, i)
+				logger.D("start sending multiX sms, current step:%d, start:%d, end:%d, retryTimes:%d", currentStep, start, end, i)
 				request := m.assembleMultiXSendRequest(msgIDArray[start:end], phoneArray[start:end], contentArray[start:end])
 				response, err = http.PostForm(m.MultiXSendPoint, *request)
 				if err != nil {
