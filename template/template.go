@@ -36,6 +36,7 @@ const (
 	UnknownChannel Channel = iota
 	MarketingChannel
 	ProductionChannel
+	InternalChannel
 )
 
 func (ch Channel) String() string {
