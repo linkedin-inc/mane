@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -9,7 +8,6 @@ import (
 	"time"
 
 	"github.com/go-errors/errors"
-	"github.com/linkedin-inc/go-workers"
 	c "github.com/linkedin-inc/mane/config"
 	"github.com/linkedin-inc/mane/logger"
 	"github.com/linkedin-inc/mane/middleware"
@@ -96,22 +94,6 @@ func MultiXPush(channel t.Channel, category t.Category, contentArray, phoneArray
 	return msgIDList, nil
 }
 
-//Trigger by SMS job, such as postpone worker
-func Trigger(msg *workers.Msg) {
-	jsonStr := msg.Args().ToJson()
-	logger.I("triggered to send sms, msg: %v\n", jsonStr)
-	var job m.SMSJob
-	if err := json.Unmarshal([]byte(jsonStr), &job); err != nil {
-		logger.E("discard due to parse sms job failed: %v\n", err)
-		return
-	}
-	_, _, err := Send(t.Name(job.Template), job.Variables, []string{job.Phone})
-	if err != nil && err != ErrNotAllowed {
-		logger.E("occur error when trigger to send sms: %v\n", err)
-	}
-}
-
-//Send normal sms to phones with given template and variables, will return MsgID, content and optional error
 func send(name t.Name, variables map[string]string, allowed []string) (string, string, error) {
 	template, err := c.WhichTemplate(name)
 	if err != nil {
@@ -163,7 +145,15 @@ func send(name t.Name, variables map[string]string, allowed []string) (string, s
 	return strconv.FormatInt(seqID, 10), content, nil
 }
 
+//Send normal sms to phones with given template and variables, will return MsgID, content and optional error
 func Send(name t.Name, variables map[string]string, phoneArray []string, actions ...middleware.Action) (string, string, error) {
+	logger.I("executed to send sms, phones: %v, template: %v\n", phoneArray, name)
+	if len(phoneArray) == 0 {
+		return "", "", ErrInvalidPhoneArray
+	}
+	if len(variables) == 0 {
+		return "", "", ErrInvalidVariables
+	}
 	var contexts []m.SMSContext
 	for i := 0; i < len(phoneArray); i++ {
 		contexts = append(contexts, *m.NewSMSContext(phoneArray[i], string(name), variables))
