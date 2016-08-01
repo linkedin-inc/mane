@@ -45,6 +45,8 @@ func (ch Channel) String() string {
 		return "marketing"
 	case ProductionChannel:
 		return "production"
+	case InternalChannel:
+		return "internal"
 	default:
 		return "unknown"
 	}
@@ -56,6 +58,8 @@ func WhichChannel(str string) Channel {
 		return ProductionChannel
 	case "marketing":
 		return MarketingChannel
+	case "internal":
+		return InternalChannel
 	default:
 		return UnknownChannel
 	}
