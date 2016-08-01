@@ -50,7 +50,6 @@ type Unsubscriber struct {
 	Phone     string    `bson:"phone" json:"phone"`
 }
 
-// the same as smsjob?
 type SMSContext struct {
 	Phone     string            `json:"phone"`
 	Template  string            `json:"template"`
