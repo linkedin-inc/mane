@@ -11,8 +11,8 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/linkedin-inc/go-workers"
 	c "github.com/linkedin-inc/mane/config"
-	f "github.com/linkedin-inc/mane/filter"
 	"github.com/linkedin-inc/mane/logger"
+	"github.com/linkedin-inc/mane/middleware"
 	m "github.com/linkedin-inc/mane/model"
 	t "github.com/linkedin-inc/mane/template"
 	u "github.com/linkedin-inc/mane/util"
@@ -112,20 +112,7 @@ func Trigger(msg *workers.Msg) {
 }
 
 //Send normal sms to phones with given template and variables, will return MsgID, content and optional error
-func Send(name t.Name, variables map[string]string, phoneArray []string) (string, string, error) {
-	logger.I("executed to send sms, phones: %v, template: %v\n", phoneArray, name)
-	if len(phoneArray) == 0 {
-		return "", "", ErrInvalidPhoneArray
-	}
-	if len(variables) == 0 {
-		return "", "", ErrInvalidVariables
-	}
-	f.StoreVariables(phoneArray, name, variables)
-	allowed := f.ProcessChain(phoneArray, name)
-	f.ClearVariables(phoneArray, name)
-	if len(allowed) == 0 {
-		return "", "", ErrNotAllowed
-	}
+func send(name t.Name, variables map[string]string, allowed []string) (string, string, error) {
 	template, err := c.WhichTemplate(name)
 	if err != nil {
 		logger.E("occur error when send sms: %v\n", err)
@@ -176,31 +163,23 @@ func Send(name t.Name, variables map[string]string, phoneArray []string) (string
 	return strconv.FormatInt(seqID, 10), content, nil
 }
 
-// batch send sms with different values map for one tpl, return  msgid array, allowed phone array, content array and the error
-func MultiXSend(name t.Name, variableArray []map[string]string, phoneArray []string) ([]string, []string, []string, error) {
-	logger.I("executed to MultiXSend sms, phones: %v, template: %v\n", phoneArray, name)
-	if len(phoneArray) == 0 {
-		return nil, nil, nil, ErrInvalidPhoneArray
+func Send(name t.Name, variables map[string]string, phoneArray []string, actions ...middleware.Action) (string, string, error) {
+	var contexts []m.SMSContext
+	for i := 0; i < len(phoneArray); i++ {
+		contexts = append(contexts, *m.NewSMSContext(phoneArray[i], string(name), variables))
 	}
-	if len(variableArray) == 0 || len(phoneArray) != len(variableArray) {
-		return nil, nil, nil, ErrInvalidVariables
+	allowedContexts := middleware.NewMiddleware(actions...).Call(contexts)
+	if len(allowedContexts) == 0 {
+		return "", "", ErrNotAllowed
 	}
-	f.StoreVariableArray(phoneArray, name, variableArray)
-	allowed := f.ProcessChain(phoneArray, name)
-	if len(allowed) == 0 {
-		return nil, nil, nil, ErrNotAllowed
+	allowed := make([]string, len(allowedContexts))
+	for i := 0; i < len(allowedContexts); i++ {
+		allowed[i] = allowedContexts[i].Phone
 	}
-	// only keep the allowed phones values map
-	allowedVariableArray := make([]map[string]string, len(allowed))
-	for i := range allowed {
-		v, existed := f.FindVariables(allowed[i], name)
-		if !existed {
-			continue
-			//return nil, nil, nil, ErrInvalidVariables
-		}
-		allowedVariableArray[i] = v
-	}
-	f.ClearVariables(phoneArray, name)
+	return send(name, variables, allowed)
+}
+
+func multiXSend(name t.Name, allowedVariableArray []map[string]string, allowed []string) ([]string, []string, []string, error) {
 	template, err := c.WhichTemplate(name)
 	if err != nil {
 		logger.E("occur error when MultiXSend sms: %v\n", err)
@@ -244,6 +223,35 @@ func MultiXSend(name t.Name, variableArray []map[string]string, phoneArray []str
 		return nil, nil, nil, err
 	}
 	return msgIDList, allowed, contentArray, nil
+}
+
+// batch send sms with different values map for one tpl, return  msgid array, allowed phone array, content array and the error
+func MultiXSend(name t.Name, variableArray []map[string]string, phoneArray []string, actions ...middleware.Action) ([]string, []string, []string, error) {
+	logger.I("executed to MultiXSend sms, phones: %v, template: %v\n", phoneArray, name)
+	if len(phoneArray) == 0 {
+		return nil, nil, nil, ErrInvalidPhoneArray
+	}
+	if len(variableArray) == 0 || len(phoneArray) != len(variableArray) {
+		return nil, nil, nil, ErrInvalidVariables
+	}
+
+	phone2Var := make(map[string]map[string]string)
+	var contexts []m.SMSContext
+	for i := 0; i < len(phoneArray); i++ {
+		contexts = append(contexts, *m.NewSMSContext(phoneArray[i], string(name), variableArray[i]))
+		phone2Var[phoneArray[i]] = variableArray[i]
+	}
+	allowedContexts := middleware.NewMiddleware(actions...).Call(contexts)
+	if len(allowedContexts) == 0 {
+		return nil, nil, nil, ErrNotAllowed
+	}
+	allowedVariableArray := make([]map[string]string, len(allowedContexts))
+	allowed := make([]string, len(allowedContexts))
+	for i := 0; i < len(allowedContexts); i++ {
+		allowedVariableArray[i] = phone2Var[allowedContexts[i].Phone]
+		allowed[i] = allowedContexts[i].Phone
+	}
+	return multiXSend(name, allowedVariableArray, allowed)
 }
 
 func generateSeqID() int64 {

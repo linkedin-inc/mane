@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 
-	f "github.com/linkedin-inc/mane/filter"
 	"github.com/linkedin-inc/mane/logger"
 	t "github.com/linkedin-inc/mane/template"
 )
@@ -17,11 +16,9 @@ type SMSConfig struct {
 var (
 	ErrTemplateNotFound     = errors.New("template not found")
 	ErrCategoryNotFound     = errors.New("category not found")
-	ErrStrategyNotFound     = errors.New("strategy not found")
 	ErrTemplateNotAvailable = errors.New("template not available")
 	ErrLoadTemplateFailed   = errors.New("failed to load template")
 	ErrLoadCategoryFailed   = errors.New("failed to load category")
-	ErrLoadStrategyFailed   = errors.New("failed to load strategy")
 
 	//短信类别
 	LoadedCategories = make(map[t.Category]t.SMSCategory)
@@ -29,8 +26,6 @@ var (
 	LoadedChannels = make(map[t.Category]t.Channel)
 	//短信模版
 	LoadedTemplates = make(map[t.Name]t.SMSTemplate)
-	//短信策略
-	LoadedStrategies = make(map[f.Type][]f.Strategy)
 
 	hole = make(chan int64, 1)
 )
@@ -38,8 +33,6 @@ var (
 const (
 	CollSMSTemplate = "sms_template"
 	CollSMSCategory = "sms_category"
-	CollSMSStrategy = "sms_strategy"
-	EventQueue      = "sms_event_"
 )
 
 //Load configuration
@@ -52,8 +45,7 @@ func Init() {
 func load() {
 	loadTemplate()
 	loadCategory()
-	loadStrategy()
-	logger.I("loaded template: %v\nloaded category: %v\nloaded strategy: %v\n", LoadedTemplates, LoadedCategories, LoadedStrategies)
+	logger.I("loaded template: %v\nloaded category: %v\n", LoadedTemplates, LoadedCategories)
 }
 
 type Watcher interface {
@@ -80,7 +72,6 @@ func reload() {
 type ConfigLoader interface {
 	LoadCategory() []t.SMSCategory
 	LoadTemplate() []t.SMSTemplate
-	LoadStrategy() []f.Strategy
 }
 
 var loader ConfigLoader
@@ -114,28 +105,6 @@ func loadTemplate() {
 	}
 }
 
-func loadStrategy() {
-	LoadedStrategies = make(map[f.Type][]f.Strategy)
-	strategies := loader.LoadStrategy()
-	if len(strategies) == 0 {
-		logger.E("loaded strategy: %v, it seems empty, are you sure?", strategies)
-		return
-	}
-	for _, strategy := range strategies {
-		//only return enabled strategy
-		if !strategy.Enabled {
-			continue
-		}
-		existing, ok := LoadedStrategies[strategy.Type]
-		if !ok {
-			LoadedStrategies[strategy.Type] = []f.Strategy{strategy}
-		} else {
-			LoadedStrategies[strategy.Type] = append(existing, strategy)
-		}
-	}
-	f.Apply(LoadedStrategies)
-}
-
 //WhichChannel returns a channel for given category
 func WhichChannel(name t.Category) (t.Channel, error) {
 	channel, existed := LoadedChannels[name]
@@ -164,14 +133,4 @@ func WhichCategory(name t.Category) (*t.SMSCategory, error) {
 		return nil, ErrCategoryNotFound
 	}
 	return &smsCategory, nil
-}
-
-//StrategyFor returns all strategies for given type
-func StrategyFor(typee f.Type) ([]f.Strategy, error) {
-	var strategies []f.Strategy
-	strategies, existed := LoadedStrategies[typee]
-	if !existed {
-		return strategies, ErrStrategyNotFound
-	}
-	return strategies, nil
 }

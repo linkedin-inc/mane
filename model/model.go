@@ -55,3 +55,18 @@ type SMSJob struct {
 	Template  string            `json:"template"`
 	Variables map[string]string `json:"variables"`
 }
+
+// the same as smsjob?
+type SMSContext struct {
+	Phone     string            `json:"phone"`
+	Template  string            `json:"template"`
+	Variables map[string]string `json:"variables"`
+}
+
+func NewSMSContext(phone string, template string, variables map[string]string) *SMSContext {
+	return &SMSContext{
+		Phone:     phone,
+		Template:  template,
+		Variables: variables,
+	}
+}
