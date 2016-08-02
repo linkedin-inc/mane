@@ -17,11 +17,11 @@ type KeepOdd struct {
 	ActionName string
 }
 
-func (m KeepOdd) Name() string {
+func (m *KeepOdd) Name() string {
 	return m.ActionName
 }
 
-func (m KeepOdd) Call(context m.SMSContext, next func() bool) bool {
+func (m *KeepOdd) Call(context m.SMSContext, next func() bool) bool {
 	if u.Atoi64(context.Phone)%2 == 1 {
 		next()
 		return true
@@ -30,19 +30,19 @@ func (m KeepOdd) Call(context m.SMSContext, next func() bool) bool {
 	}
 }
 
-func NewKeepOdd(name string) KeepOdd {
-	return KeepOdd{ActionName: name}
+func NewKeepOdd(name string) *KeepOdd {
+	return &KeepOdd{ActionName: name}
 }
 
 type KeepThree struct {
 	ActionName string
 }
 
-func (m KeepThree) Name() string {
+func (m *KeepThree) Name() string {
 	return m.ActionName
 }
 
-func (m KeepThree) Call(context m.SMSContext, next func() bool) bool {
+func (m *KeepThree) Call(context m.SMSContext, next func() bool) bool {
 	if u.Atoi64(context.Phone)%3 == 0 {
 		next()
 		return true
@@ -51,8 +51,8 @@ func (m KeepThree) Call(context m.SMSContext, next func() bool) bool {
 	}
 }
 
-func NewKeepThree(name string) KeepThree {
-	return KeepThree{ActionName: name}
+func NewKeepThree(name string) *KeepThree {
+	return &KeepThree{ActionName: name}
 }
 
 func TestMiddleware_Append(t *testing.T) {
