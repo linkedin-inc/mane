@@ -117,7 +117,7 @@ func (m Montnets) Send(seqID string, phoneArray []string, contentArray []string)
 			var response *http.Response
 			var err error
 			for i := 0; i < retryTimes; i++ {
-				logger.I("start sending sms, current step:%d, start:%d, end:%d, retryTimes:%d", currentStep, start, end, i)
+				logger.D("start sending sms, current step:%d, start:%d, end:%d, retryTimes:%d", currentStep, start, end, i)
 				request := m.assembleSendRequest(seqID, phoneArray[start:end], contentArray[0])
 				response, err = http.PostForm(m.SendEndpoint, *request)
 				if err != nil {

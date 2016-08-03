@@ -40,7 +40,7 @@ func continuation(actions []Action, context model.SMSContext, final func()) func
 		if len(actions) > 0 {
 			acknowledge = actions[0].Call(context, continuation(actions[1:], context, final))
 			if !acknowledge {
-				logger.I("%v prevented by %s\n", context, actions[0].Name())
+				logger.I("[p:%v, t:%v] prevented by %s\n", context.Phone, context.Template, actions[0].Name())
 				return
 			}
 		} else {
