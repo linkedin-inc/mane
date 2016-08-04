@@ -51,9 +51,5 @@ func continuation(actions []Action, context model.SMSContext, final func()) func
 }
 
 func NewMiddleware(actions ...Action) *Middleware {
-	middleware := &Middleware{}
-	for _, a := range actions {
-		middleware.Append(a)
-	}
-	return middleware
+	return &Middleware{actions}
 }
