@@ -14,15 +14,17 @@ type Middleware struct {
 	actions []Action
 }
 
-func (m *Middleware) Append(action Action) {
+func (m *Middleware) Append(action Action) *Middleware {
 	m.actions = append(m.actions, action)
+	return m
 }
 
-func (m *Middleware) Prepend(action Action) {
+func (m *Middleware) Prepend(action Action) *Middleware {
 	actions := make([]Action, len(m.actions)+1)
 	actions[0] = action
 	copy(actions[1:], m.actions)
 	m.actions = actions
+	return m
 }
 
 func (m *Middleware) Call(contexts []model.SMSContext) []model.SMSContext {
@@ -51,5 +53,5 @@ func continuation(actions []Action, context model.SMSContext, final func()) func
 }
 
 func NewMiddleware(actions ...Action) *Middleware {
-	return &Middleware{actions}
+	return (&Middleware{actions}).Prepend(NewErrorReport())
 }

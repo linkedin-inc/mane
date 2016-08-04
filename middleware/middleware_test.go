@@ -55,7 +55,26 @@ func NewKeepThree(name string) *KeepThree {
 	return &KeepThree{ActionName: name}
 }
 
+type PanicZero struct{}
+
+func (m *PanicZero) Name() string {
+	return "PanicZero"
+}
+
+func (m *PanicZero) Call(context m.SMSContext, next func() bool) bool {
+	if u.Atoi64(context.Phone) == 0 {
+		panic("WTF")
+	}
+	next()
+	return true
+}
+
+func NewPanicZero() *PanicZero {
+	return &PanicZero{}
+}
+
 func TestMiddleware_Append(t *testing.T) {
+	t.Log("\n\n")
 	// just create some fake contexts
 	N := 10
 	for i := 0; i < N; i++ {
@@ -70,6 +89,7 @@ func TestMiddleware_Append(t *testing.T) {
 
 // nil actions should always return true
 func TestNewMiddleware(t *testing.T) {
+	t.Log("\n\n")
 	contexts = contexts[:0]
 	N := 10
 	for i := 0; i < N; i++ {
@@ -83,6 +103,7 @@ func TestNewMiddleware(t *testing.T) {
 
 // 0 3 6 9
 func TestMiddleware_Append2(t *testing.T) {
+	t.Log("\n\n")
 	contexts = contexts[:0]
 	N := 10
 	for i := 0; i < N; i++ {
@@ -98,6 +119,7 @@ func TestMiddleware_Append2(t *testing.T) {
 
 // 3 9
 func TestMiddleware_Append3(t *testing.T) {
+	t.Log("\n\n")
 	contexts = contexts[:0]
 	N := 10
 	for i := 0; i < N; i++ {
@@ -108,5 +130,21 @@ func TestMiddleware_Append3(t *testing.T) {
 		t.Errorf("TestNewMiddleware failed. allowedContexts:%v,%v\n", len(allowedContexts), allowedContexts)
 	} else {
 		t.Logf("TestMiddleware_Append3 allowedContexts:%v\n", allowedContexts)
+	}
+}
+
+//  3 6 9
+func TestMiddleware_Append4(t *testing.T) {
+	t.Log("\n\n")
+	contexts = contexts[:0]
+	N := 10
+	for i := 0; i < N; i++ {
+		contexts = append(contexts, *m.NewSMSContext(u.Itoa(i), "", nil))
+	}
+	allowedContexts := NewMiddleware(NewKeepThree("KeepThree"), NewPanicZero()).Call(contexts)
+	if len(allowedContexts) != 3 {
+		t.Errorf("TestNewMiddleware failed. allowedContexts:%v,%v\n", len(allowedContexts), allowedContexts)
+	} else {
+		t.Logf("TestMiddleware_Append2 allowedContexts:%v\n", allowedContexts)
 	}
 }
