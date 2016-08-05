@@ -79,11 +79,6 @@ func fetchReply(vendor v.Vendor) ([]m.Reply, error) {
 		logger.E("failed to pull reply from %v : %v\n", vendor.Name(), err)
 		return []m.Reply{}, err
 	}
-	err = saveReply(replies)
-	if err != nil {
-		logger.E("failed to save reply from %v : %v\n", vendor.Name(), err)
-		return []m.Reply{}, err
-	}
 	return replies, nil
 }
 
