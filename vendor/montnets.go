@@ -190,7 +190,7 @@ func (m Montnets) handleSendResponse(response *http.Response) error {
 	return nil
 }
 
-func (m Montnets) Status() ([]mo.DeliveryStatus, error) {
+func (m Montnets) Status() ([]*mo.DeliveryStatus, error) {
 	request := m.assembleUpstreamRequest(requestTypeStatus)
 	response, err := http.PostForm(m.StatusEndpoint, *request)
 	if err != nil {
@@ -205,7 +205,7 @@ func (m Montnets) Status() ([]mo.DeliveryStatus, error) {
 		logger.E("failed to handle status response: %v\n", err)
 		return nil, ErrGetStatusFailed
 	}
-	var parsedStatus []mo.DeliveryStatus
+	var parsedStatus []*mo.DeliveryStatus
 	if len(status) == 0 {
 		return parsedStatus, nil
 	}
@@ -234,8 +234,8 @@ func (m Montnets) handleUpstreamResponse(response *http.Response) ([]string, err
 	return body.Result, nil
 }
 
-func (m Montnets) parseStatus(raw []string) []mo.DeliveryStatus {
-	var statuses []mo.DeliveryStatus
+func (m Montnets) parseStatus(raw []string) []*mo.DeliveryStatus {
+	var statuses []*mo.DeliveryStatus
 	for _, rawRecord := range raw {
 		splited := strings.Split(rawRecord, ",")
 		// avoid out of range panic
@@ -249,7 +249,7 @@ func (m Montnets) parseStatus(raw []string) []mo.DeliveryStatus {
 			//discard and go ahead
 			continue
 		}
-		status := mo.DeliveryStatus{
+		status := &mo.DeliveryStatus{
 			MsgID:      u.Atoi64Safe(splited[5], -1),
 			Timestamp:  timestamp,
 			Phone:      splited[4],
@@ -264,7 +264,7 @@ func (m Montnets) parseStatus(raw []string) []mo.DeliveryStatus {
 	return statuses
 }
 
-func (m Montnets) Reply() ([]mo.Reply, error) {
+func (m Montnets) Reply() ([]*mo.Reply, error) {
 	request := m.assembleUpstreamRequest(requestTypeReply)
 	response, err := http.PostForm(m.StatusEndpoint, *request)
 	if err != nil {
@@ -279,7 +279,7 @@ func (m Montnets) Reply() ([]mo.Reply, error) {
 		logger.E("failed to handle reply response: %v\n", err)
 		return nil, ErrGetReplyFailed
 	}
-	var parsedReplies []mo.Reply
+	var parsedReplies []*mo.Reply
 	if len(replies) == 0 {
 		return parsedReplies, nil
 	}
@@ -287,8 +287,8 @@ func (m Montnets) Reply() ([]mo.Reply, error) {
 	return parsedReplies, nil
 }
 
-func (m Montnets) parseReply(raw []string) []mo.Reply {
-	var replies []mo.Reply
+func (m Montnets) parseReply(raw []string) []*mo.Reply {
+	var replies []*mo.Reply
 	for _, rawRecord := range raw {
 		splited := strings.Split(rawRecord, ",")
 		timestamp, err := time.ParseInLocation("2006-01-02 15:04:05", splited[1], time.Local)
@@ -297,7 +297,7 @@ func (m Montnets) parseReply(raw []string) []mo.Reply {
 			//discard and go ahead
 			continue
 		}
-		reply := mo.Reply{
+		reply := &mo.Reply{
 			Timestamp: timestamp,
 			Phone:     splited[2],
 			Msg:       strings.TrimSpace(splited[6]),

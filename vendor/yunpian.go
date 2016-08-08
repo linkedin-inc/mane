@@ -41,9 +41,9 @@ type yunpianSendResponse struct {
 }
 
 type yunpianStatusResponse struct {
-	Code      int32    `json:"code"`
-	Msg       string   `json:"msg"`
-	SMSStatus []status `json:"msg_status"`
+	Code      int32     `json:"code"`
+	Msg       string    `json:"msg"`
+	SMSStatus []*status `json:"msg_status"`
 }
 
 type status struct {
@@ -56,9 +56,9 @@ type status struct {
 }
 
 type replyResponse struct {
-	Code     int32   `json:"code"`
-	Msg      string  `json:"msg"`
-	SMSReply []reply `json:"sms_reply"`
+	Code     int32    `json:"code"`
+	Msg      string   `json:"msg"`
+	SMSReply []*reply `json:"sms_reply"`
 }
 
 type reply struct {
@@ -139,7 +139,7 @@ func (y Yunpian) handleSendResponse(response *http.Response) error {
 	}
 	return nil
 }
-func (y Yunpian) Status() ([]m.DeliveryStatus, error) {
+func (y Yunpian) Status() ([]*m.DeliveryStatus, error) {
 	form := y.assemblePullRequest()
 	request, _ := http.NewRequest("POST", y.StatusEndpoint, strings.NewReader(form.Encode()))
 	request.Header.Add("Accept", "application/json;charset=utf-8;")
@@ -159,7 +159,7 @@ func (y Yunpian) Status() ([]m.DeliveryStatus, error) {
 		logger.E("failed to handle status response: %v\n", err)
 		return nil, ErrGetStatusFailed
 	}
-	var parsedStatus []m.DeliveryStatus
+	var parsedStatus []*m.DeliveryStatus
 	if len(status) == 0 {
 		return parsedStatus, nil
 	}
@@ -174,7 +174,7 @@ func (y Yunpian) assemblePullRequest() *url.Values {
 	return &form
 }
 
-func (y Yunpian) handleStatusResponse(response *http.Response) ([]status, error) {
+func (y Yunpian) handleStatusResponse(response *http.Response) ([]*status, error) {
 	defer func() {
 		if err := response.Body.Close(); err != nil {
 			logger.I("Close error %v\n", err)
@@ -194,8 +194,8 @@ func (y Yunpian) handleStatusResponse(response *http.Response) ([]status, error)
 	return body.SMSStatus, nil
 }
 
-func (y Yunpian) parseStatus(raw []status) []m.DeliveryStatus {
-	var statuses []m.DeliveryStatus
+func (y Yunpian) parseStatus(raw []*status) []*m.DeliveryStatus {
+	var statuses []*m.DeliveryStatus
 	for _, aRawRecord := range raw {
 		timestamp, err := time.ParseInLocation("2006-01-02 15:04:05", aRawRecord.UserReceiveTime, time.Local)
 		if err != nil {
@@ -203,7 +203,7 @@ func (y Yunpian) parseStatus(raw []status) []m.DeliveryStatus {
 			//discard and go ahead
 			continue
 		}
-		status := m.DeliveryStatus{
+		status := &m.DeliveryStatus{
 			MsgID:      util.Atoi64Safe(aRawRecord.UID, -1),
 			Timestamp:  timestamp,
 			Phone:      aRawRecord.Mobile,
@@ -219,7 +219,7 @@ func (y Yunpian) parseStatus(raw []status) []m.DeliveryStatus {
 	return statuses
 }
 
-func (y Yunpian) Reply() ([]m.Reply, error) {
+func (y Yunpian) Reply() ([]*m.Reply, error) {
 	form := y.assemblePullRequest()
 	request, _ := http.NewRequest("POST", y.ReplyEndpoint, strings.NewReader(form.Encode()))
 	request.Header.Add("Accept", "application/json;charset=utf-8;")
@@ -239,7 +239,7 @@ func (y Yunpian) Reply() ([]m.Reply, error) {
 		logger.E("failed to handle status response: %v\n", err)
 		return nil, ErrGetReplyFailed
 	}
-	var parsedReplies []m.Reply
+	var parsedReplies []*m.Reply
 	if len(replies) == 0 {
 		return parsedReplies, nil
 	}
@@ -247,7 +247,7 @@ func (y Yunpian) Reply() ([]m.Reply, error) {
 	return parsedReplies, nil
 }
 
-func (y Yunpian) handleReplyResponse(response *http.Response) ([]reply, error) {
+func (y Yunpian) handleReplyResponse(response *http.Response) ([]*reply, error) {
 	defer func() {
 		_ = response.Body.Close()
 	}()
@@ -265,8 +265,8 @@ func (y Yunpian) handleReplyResponse(response *http.Response) ([]reply, error) {
 	return body.SMSReply, nil
 }
 
-func (y Yunpian) parseReply(raw []reply) []m.Reply {
-	var replies []m.Reply
+func (y Yunpian) parseReply(raw []*reply) []*m.Reply {
+	var replies []*m.Reply
 	for _, aRawRecord := range raw {
 		timestamp, err := time.ParseInLocation("2006-01-02 15:04:05", aRawRecord.ReplyTime, time.Local)
 		if err != nil {
@@ -274,7 +274,7 @@ func (y Yunpian) parseReply(raw []reply) []m.Reply {
 			//discard and go ahead
 			continue
 		}
-		reply := m.Reply{
+		reply := &m.Reply{
 			Timestamp: timestamp,
 			Phone:     aRawRecord.Mobile,
 			Msg:       strings.TrimSpace(aRawRecord.Text),

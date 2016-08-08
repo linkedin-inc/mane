@@ -1,13 +1,13 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/go-errors/errors"
 	c "github.com/linkedin-inc/mane/config"
 	"github.com/linkedin-inc/mane/logger"
 	"github.com/linkedin-inc/mane/middleware"

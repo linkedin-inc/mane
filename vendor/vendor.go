@@ -47,8 +47,8 @@ type Vendor interface {
 	Name() Name
 	Send(seqID string, phoneArray []string, contentArray []string) error
 	MultiXSend(msgIDArray []string, phoneArray []string, contentArray []string) error
-	Status() ([]m.DeliveryStatus, error)
-	Reply() ([]m.Reply, error)
+	Status() ([]*m.DeliveryStatus, error)
+	Reply() ([]*m.Reply, error)
 	GetBalance() (string, error)
 }
 
