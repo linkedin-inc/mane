@@ -154,9 +154,9 @@ func Send(name t.Name, variables map[string]string, phoneArray []string, actions
 	if len(variables) == 0 {
 		return "", "", ErrInvalidVariables
 	}
-	var contexts []m.SMSContext
+	var contexts []*m.SMSContext
 	for i := 0; i < len(phoneArray); i++ {
-		contexts = append(contexts, *m.NewSMSContext(phoneArray[i], string(name), variables))
+		contexts = append(contexts, m.NewSMSContext(phoneArray[i], string(name), variables))
 	}
 	allowedContexts := middleware.NewMiddleware(actions...).Call(contexts)
 	if len(allowedContexts) == 0 {
@@ -226,9 +226,9 @@ func MultiXSend(name t.Name, variableArray []map[string]string, phoneArray []str
 	}
 
 	phone2Var := make(map[string]map[string]string)
-	var contexts []m.SMSContext
+	var contexts []*m.SMSContext
 	for i := 0; i < len(phoneArray); i++ {
-		contexts = append(contexts, *m.NewSMSContext(phoneArray[i], string(name), variableArray[i]))
+		contexts = append(contexts, m.NewSMSContext(phoneArray[i], string(name), variableArray[i]))
 		phone2Var[phoneArray[i]] = variableArray[i]
 	}
 	allowedContexts := middleware.NewMiddleware(actions...).Call(contexts)

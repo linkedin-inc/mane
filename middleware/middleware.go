@@ -7,7 +7,7 @@ import (
 
 type Action interface {
 	Name() string
-	Call(context model.SMSContext, next func() bool) bool
+	Call(context *model.SMSContext, next func() bool) bool
 }
 
 type Middleware struct {
@@ -27,8 +27,8 @@ func (m *Middleware) Prepend(action Action) *Middleware {
 	return m
 }
 
-func (m *Middleware) Call(contexts []model.SMSContext) []model.SMSContext {
-	var allowedContexts []model.SMSContext
+func (m *Middleware) Call(contexts []*model.SMSContext) []*model.SMSContext {
+	var allowedContexts []*model.SMSContext
 	for _, context := range contexts {
 		continuation(m.actions, context, func() {
 			allowedContexts = append(allowedContexts, context)
@@ -37,7 +37,7 @@ func (m *Middleware) Call(contexts []model.SMSContext) []model.SMSContext {
 	return allowedContexts
 }
 
-func continuation(actions []Action, context model.SMSContext, final func()) func() bool {
+func continuation(actions []Action, context *model.SMSContext, final func()) func() bool {
 	return func() (acknowledge bool) {
 		if len(actions) > 0 {
 			acknowledge = actions[0].Call(context, continuation(actions[1:], context, final))

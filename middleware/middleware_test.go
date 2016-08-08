@@ -7,7 +7,7 @@ import (
 	u "github.com/linkedin-inc/mane/util"
 )
 
-var contexts []m.SMSContext
+var contexts []*m.SMSContext
 
 func init() {
 
@@ -21,7 +21,7 @@ func (m *KeepOdd) Name() string {
 	return m.ActionName
 }
 
-func (m *KeepOdd) Call(context m.SMSContext, next func() bool) bool {
+func (m *KeepOdd) Call(context *m.SMSContext, next func() bool) bool {
 	if u.Atoi64(context.Phone)%2 == 1 {
 		next()
 		return true
@@ -42,7 +42,7 @@ func (m *KeepThree) Name() string {
 	return m.ActionName
 }
 
-func (m *KeepThree) Call(context m.SMSContext, next func() bool) bool {
+func (m *KeepThree) Call(context *m.SMSContext, next func() bool) bool {
 	if u.Atoi64(context.Phone)%3 == 0 {
 		next()
 		return true
@@ -61,7 +61,7 @@ func (m *PanicZero) Name() string {
 	return "PanicZero"
 }
 
-func (m *PanicZero) Call(context m.SMSContext, next func() bool) bool {
+func (m *PanicZero) Call(context *m.SMSContext, next func() bool) bool {
 	if u.Atoi64(context.Phone) == 0 {
 		panic("WTF")
 	}
@@ -78,7 +78,7 @@ func TestMiddleware_Append(t *testing.T) {
 	// just create some fake contexts
 	N := 10
 	for i := 0; i < N; i++ {
-		contexts = append(contexts, *m.NewSMSContext(u.Itoa(i), "", nil))
+		contexts = append(contexts, m.NewSMSContext(u.Itoa(i), "", nil))
 	}
 	allowedContexts := NewMiddleware(NewKeepOdd("KeepOdd")).Call(contexts)
 	if len(allowedContexts) != 5 {
@@ -93,7 +93,7 @@ func TestNewMiddleware(t *testing.T) {
 	contexts = contexts[:0]
 	N := 10
 	for i := 0; i < N; i++ {
-		contexts = append(contexts, *m.NewSMSContext(u.Itoa(i), "", nil))
+		contexts = append(contexts, m.NewSMSContext(u.Itoa(i), "", nil))
 	}
 	allowedContexts := NewMiddleware().Call(contexts)
 	if len(allowedContexts) != 10 {
@@ -107,7 +107,7 @@ func TestMiddleware_Append2(t *testing.T) {
 	contexts = contexts[:0]
 	N := 10
 	for i := 0; i < N; i++ {
-		contexts = append(contexts, *m.NewSMSContext(u.Itoa(i), "", nil))
+		contexts = append(contexts, m.NewSMSContext(u.Itoa(i), "", nil))
 	}
 	allowedContexts := NewMiddleware(NewKeepThree("KeepThree")).Call(contexts)
 	if len(allowedContexts) != 4 {
@@ -123,7 +123,7 @@ func TestMiddleware_Append3(t *testing.T) {
 	contexts = contexts[:0]
 	N := 10
 	for i := 0; i < N; i++ {
-		contexts = append(contexts, *m.NewSMSContext(u.Itoa(i), "", nil))
+		contexts = append(contexts, m.NewSMSContext(u.Itoa(i), "", nil))
 	}
 	allowedContexts := NewMiddleware(NewKeepOdd("KeepOdd"), NewKeepThree("KeepThree")).Call(contexts)
 	if len(allowedContexts) != 2 {
@@ -139,7 +139,7 @@ func TestMiddleware_Append4(t *testing.T) {
 	contexts = contexts[:0]
 	N := 10
 	for i := 0; i < N; i++ {
-		contexts = append(contexts, *m.NewSMSContext(u.Itoa(i), "", nil))
+		contexts = append(contexts, m.NewSMSContext(u.Itoa(i), "", nil))
 	}
 	allowedContexts := NewMiddleware(NewKeepThree("KeepThree"), NewPanicZero()).Call(contexts)
 	if len(allowedContexts) != 3 {
