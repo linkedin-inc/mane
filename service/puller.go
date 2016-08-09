@@ -45,7 +45,6 @@ func Pull(name v.Name) ([]*m.DeliveryStatus, []*m.Reply, error) {
 func fetchStatus(vendor v.Vendor) ([]*m.DeliveryStatus, error) {
 	statuses, err := vendor.Status()
 	if err != nil {
-		logger.E("failed to pull status from %v : %v\n", vendor.Name(), err)
 		return nil, err
 	}
 	return statuses, nil
@@ -54,7 +53,6 @@ func fetchStatus(vendor v.Vendor) ([]*m.DeliveryStatus, error) {
 func fetchReply(vendor v.Vendor) ([]*m.Reply, error) {
 	replies, err := vendor.Reply()
 	if err != nil {
-		logger.E("failed to pull reply from %v : %v\n", vendor.Name(), err)
 		return nil, err
 	}
 	return replies, nil
