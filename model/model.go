@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"gopkg.in/mgo.v2/bson"
+)
 
 const (
 	CollSMSHistory   = "sms_history"
@@ -20,15 +24,16 @@ const (
 )
 
 type SMSHistory struct {
-	MsgID     int64     `bson:"msg_id" json:"msg_id"`
-	Timestamp time.Time `bson:"timestamp" json:"timestamp"`
-	Phone     string    `bson:"phone" json:"phone"`
-	Content   string    `bson:"content" json:"content"`
-	Template  string    `bson:"template" json:"template"`
-	Category  string    `bson:"category" json:"category"`
-	Channel   int       `bson:"channel" json:"channel"`
-	Vendor    string    `bson:"vendor" json:"vendor"`
-	State     SMSState  `bson:"state" json:"state"`
+	ID        bson.ObjectId `bson:"_id" json:"_id"`
+	MsgID     int64         `bson:"msg_id" json:"msg_id"`
+	Timestamp time.Time     `bson:"timestamp" json:"timestamp"`
+	Phone     string        `bson:"phone" json:"phone"`
+	Content   string        `bson:"content" json:"content"`
+	Template  string        `bson:"template" json:"template"`
+	Category  string        `bson:"category" json:"category"`
+	Channel   int           `bson:"channel" json:"channel"`
+	Vendor    string        `bson:"vendor" json:"vendor"`
+	State     SMSState      `bson:"state" json:"state"`
 }
 
 type DeliveryStatus struct {
