@@ -53,5 +53,8 @@ func continuation(actions []Action, context *model.SMSContext, final func()) fun
 }
 
 func NewMiddleware(actions ...Action) *Middleware {
-	return (&Middleware{actions}).Prepend(NewErrorReport())
+	if len(actions) > 0 {
+		return (&Middleware{actions}).Prepend(NewErrorReport())
+	}
+	return &Middleware{}
 }
