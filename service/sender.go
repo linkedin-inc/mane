@@ -59,41 +59,6 @@ func Push(channel t.Channel, category t.Category, content string, phoneArray []s
 	return strconv.FormatInt(seqID, 10), nil
 }
 
-//Batch sending group sms with different contents, will return the corresponding MsgID Array and the error
-func MultiXPush(channel t.Channel, category t.Category, contentArray, phoneArray []string) ([]string, error) {
-	if len(contentArray) != len(phoneArray) || len(contentArray) == 0 {
-		return nil, ErrInvalidVariables
-	}
-	logger.I("executed to MultiXPush sms, phones: %v, content: %v\n", phoneArray, contentArray)
-	vendor, err := v.GetByChannel(channel)
-	if err != nil {
-		logger.E("occur error when MultiXPush: %v\n", err)
-		return []string{}, err
-	}
-	msgIDList := generateSeqIDList(len(contentArray))
-	err = vendor.MultiXSend(msgIDList, phoneArray, contentArray)
-	if err != nil {
-		if err == v.ErrNotInProduction {
-			smsHistories := assembleMultiHistory(phoneArray, contentArray, msgIDList, channel, t.BlankName, category, vendor.Name(), m.SMSStateChecked)
-			err := saveHistory(smsHistories)
-			if err != nil {
-				logger.E("failed to save MultiXPush history: %v\n", err)
-				return []string{}, err
-			}
-			return msgIDList, nil
-		}
-		logger.E("occur error when MultiXPush: %v\n", err)
-		return []string{}, err
-	}
-	smsHistories := assembleMultiHistory(phoneArray, contentArray, msgIDList, channel, t.BlankName, category, vendor.Name(), m.SMSStateUnchecked)
-	err = saveHistory(smsHistories)
-	if err != nil {
-		logger.E("failed to save MultiXPush history: %v\n", err)
-		return []string{}, err
-	}
-	return msgIDList, nil
-}
-
 func send(name t.Name, variables map[string]string, allowed []string) (string, string, error) {
 	template, err := c.WhichTemplate(name)
 	if err != nil {
@@ -307,11 +272,6 @@ func saveHistory(histories []interface{}) error {
 }
 
 func assembleTemplate(content string, variables map[string]string) (string, error) {
-	//TODO how to deal with trackable sms
-	//trackable, err := isTrackable(content, variables)
-	//if err != nil {
-	//	return "", err
-	//}
 	var variablesArray []string
 	for key, value := range variables {
 		//wrap key with curly braces. for example, key is 'name' and wrapped as '{name}'
