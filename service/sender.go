@@ -26,39 +26,6 @@ var (
 	ErrNotAllowed        = errors.New("not allowed")
 )
 
-//Push sms to phones directly with given content, will return MsgID and optional error
-func Push(channel t.Channel, category t.Category, content string, phoneArray []string) (string, error) {
-	logger.I("executed to push sms, phones: %v, content: %v\n", phoneArray, content)
-	vendor, err := v.GetByChannel(channel)
-	if err != nil {
-		logger.E("occur error when Push: %v\n", err)
-		return "", err
-	}
-	seqID := generateSeqID()
-	contentArray := []string{content}
-	err = vendor.Send(strconv.FormatInt(seqID, 10), phoneArray, contentArray)
-	if err != nil {
-		if err == v.ErrNotInProduction {
-			smsHistories := assembleHistory(phoneArray, content, seqID, channel, t.BlankName, category, vendor.Name(), m.SMSStateChecked)
-			err := saveHistory(smsHistories)
-			if err != nil {
-				logger.E("failed to save Push: %v\n", err)
-				return "", err
-			}
-			return strconv.FormatInt(seqID, 10), nil
-		}
-		logger.E("occur error when Push: %v\n", err)
-		return "", err
-	}
-	smsHistories := assembleHistory(phoneArray, content, seqID, channel, t.BlankName, category, vendor.Name(), m.SMSStateUnchecked)
-	err = saveHistory(smsHistories)
-	if err != nil {
-		logger.E("failed to save Push history: %v\n", err)
-		return "", err
-	}
-	return strconv.FormatInt(seqID, 10), nil
-}
-
 func send(name t.Name, variables map[string]string, allowed []string) (string, string, error) {
 	template, err := c.WhichTemplate(name)
 	if err != nil {
