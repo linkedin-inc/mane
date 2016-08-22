@@ -12,9 +12,9 @@ const (
 type SMSState int
 
 const (
-	SMSStateChecked = iota + 1
-	SMSStateUnchecked
-	SMSStateFailed
+	SMSStateChecked   = 1
+	SMSStateUnchecked = 2
+	SMSStateFailed    = 5
 )
 
 type SMSHistory struct {
