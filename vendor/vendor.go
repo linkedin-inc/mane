@@ -16,7 +16,6 @@ var (
 	ErrGetReplyFailed     = errors.New("get reply failed")
 	ErrQueryBalanceFailed = errors.New("query balance failed")
 	ErrVendorNotFound     = errors.New("vendor not found")
-	ErrIllegalParameter   = errors.New("illegal parameter")
 )
 
 type vendorRegistry struct {
@@ -45,8 +44,8 @@ type Name string
 //Vendor represents a SMS vendor, it can preforms two behaviors, send sms and check delivery status and pull reply.
 type Vendor interface {
 	Name() Name
-	Send(seqID string, phoneArray []string, contentArray []string) error
-	MultiXSend(msgIDArray []string, phoneArray []string, contentArray []string) error
+	Send(contexts []*m.SMSContext) error
+	MultiXSend(contexts []*m.SMSContext) error
 	Status() ([]*m.DeliveryStatus, error)
 	Reply() ([]*m.Reply, error)
 	GetBalance() (string, error)

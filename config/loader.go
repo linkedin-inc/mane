@@ -17,8 +17,6 @@ var (
 	ErrTemplateNotFound     = errors.New("template not found")
 	ErrCategoryNotFound     = errors.New("category not found")
 	ErrTemplateNotAvailable = errors.New("template not available")
-	ErrLoadTemplateFailed   = errors.New("failed to load template")
-	ErrLoadCategoryFailed   = errors.New("failed to load category")
 
 	//短信类别
 	LoadedCategories = make(map[t.Category]t.SMSCategory)

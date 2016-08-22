@@ -14,12 +14,11 @@ type SMSState int
 const (
 	SMSStateChecked = iota + 1
 	SMSStateUnchecked
-	SMSStateProcessed
-	SMSStateUnprocessed
 	SMSStateFailed
 )
 
 type SMSHistory struct {
+	ID        int64     `bson:"_id" json:"id"`
 	MsgID     int64     `bson:"msg_id" json:"msg_id"`
 	Timestamp time.Time `bson:"timestamp" json:"timestamp"`
 	Phone     string    `bson:"phone" json:"phone"`
@@ -51,15 +50,22 @@ type Unsubscriber struct {
 }
 
 type SMSContext struct {
+	ID        int64             `json:"id"`
 	Phone     string            `json:"phone"`
 	Template  string            `json:"template"`
 	Variables map[string]string `json:"variables"`
+	History   *SMSHistory       `json:"sms_history,omitempty"`
 }
 
-func NewSMSContext(phone string, template string, variables map[string]string) *SMSContext {
+func NewSMSContext(id int64, phone string, template string, variables map[string]string) *SMSContext {
 	return &SMSContext{
+		ID:        id,
 		Phone:     phone,
 		Template:  template,
 		Variables: variables,
 	}
+}
+
+func NewSmsContextID() int64 {
+	return time.Now().UnixNano()
 }

@@ -86,16 +86,18 @@ func (m Montnets) Name() Name {
 }
 
 //Send sms to given phone number with content
-func (m Montnets) Send(seqID string, phoneArray []string, contentArray []string) error {
-	// this api only allow the same content
-	if len(contentArray) != 1 {
-		return ErrIllegalParameter
-	}
+func (m Montnets) Send(contexts []*mo.SMSContext) error {
+	//TODO we should ensure all content must be the same
 	//only send in production environment
 	if !u.IsProduction() {
-		logger.I("discard due to not in production environment!")
+		logger.E("discard due to not in production environment!")
 		return ErrNotInProduction
 	}
+
+	phoneArray := m.extractPhoneArray(contexts)
+	msgID := strconv.FormatInt(contexts[0].History.MsgID, 10)
+	content := contexts[0].History.Content
+
 	var finalError error
 	pool := u.NewPool(poolSize, poolSize)
 	defer pool.Release()
@@ -118,7 +120,7 @@ func (m Montnets) Send(seqID string, phoneArray []string, contentArray []string)
 			var err error
 			for i := 0; i < retryTimes; i++ {
 				logger.D("start sending sms, current step:%d, start:%d, end:%d, retryTimes:%d", currentStep, start, end, i)
-				request := m.assembleSendRequest(seqID, phoneArray[start:end], contentArray[0])
+				request := m.assembleSendRequest(msgID, phoneArray[start:end], content)
 				response, err = http.PostForm(m.SendEndpoint, *request)
 				if err != nil {
 					logger.E("retryTimes:%d, failed to send sms[%d:%d]: %v\n", i, start, end, err)
@@ -346,21 +348,23 @@ func (m Montnets) handleBalanceResponse(response *http.Response) (string, error)
 	return body, nil
 }
 
-func (m Montnets) MultiXSend(msgIDArray []string, phoneArray []string, contentArray []string) error {
+func (m Montnets) MultiXSend(contexts []*mo.SMSContext) error {
 	//only send in production environment
 	if !u.IsProduction() {
 		logger.I("discard due to not in production environment!")
 		return ErrNotInProduction
 	}
-	if len(msgIDArray) != len(phoneArray) || len(msgIDArray) != len(contentArray) {
-		return errors.New("illegal params")
-	}
+
+	phoneArray := m.extractPhoneArray(contexts)
+	msgIDArray := m.extractMsgIDArray(contexts)
+	contentArray := m.extractContentArray(contexts)
+
 	var finalError error
 	pool := u.NewPool(poolSize, poolSize)
 	defer pool.Release()
-	jobCount := int(math.Ceil(float64(len(phoneArray)) / float64(maxSendNumEachTime))) // total job count
+	jobCount := int(math.Ceil(float64(len(contexts)) / float64(maxSendNumEachTime))) // total job count
 	pool.WaitCount(jobCount)
-	logger.I("start sending multiX sms, total length: %d, total job count: %d", len(phoneArray), jobCount)
+	logger.I("start sending multiX sms, phones: %v, length: %d,  total job count: %d", phoneArray, len(phoneArray), jobCount)
 	for i := 0; i < jobCount; i++ {
 		start := i * maxSendNumEachTime
 		end := start + maxSendNumEachTime
@@ -380,7 +384,7 @@ func (m Montnets) MultiXSend(msgIDArray []string, phoneArray []string, contentAr
 				request := m.assembleMultiXSendRequest(msgIDArray[start:end], phoneArray[start:end], contentArray[start:end])
 				response, err = http.PostForm(m.MultiXSendPoint, *request)
 				if err != nil {
-					logger.E("retryTimes:%d, failed to send multiX sms[%d:%d]: %v\n", i, start, end, err)
+					logger.E("retryTimes:%d, failed to send multiX sms[%d:%d]:%v, %v\n", i, start, end, phoneArray[start:end], err)
 					if i == retryTimes-1 {
 						if finalError == nil {
 							finalError = err
@@ -423,4 +427,28 @@ func (m Montnets) assembleMultiXSendRequest(msgIDArray []string, phoneArray []st
 	}
 	form.Add(formMultixmt, strings.Join(multixmt, ","))
 	return &form
+}
+
+func (m Montnets) extractMsgIDArray(contexts []*mo.SMSContext) []string {
+	res := make([]string, len(contexts))
+	for i := range contexts {
+		res[i] = strconv.FormatInt(contexts[i].History.MsgID, 10)
+	}
+	return res
+}
+
+func (m Montnets) extractPhoneArray(contexts []*mo.SMSContext) []string {
+	res := make([]string, len(contexts))
+	for i := range contexts {
+		res[i] = contexts[i].History.Phone
+	}
+	return res
+}
+
+func (m Montnets) extractContentArray(contexts []*mo.SMSContext) []string {
+	res := make([]string, len(contexts))
+	for i := range contexts {
+		res[i] = contexts[i].History.Content
+	}
+	return res
 }

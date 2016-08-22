@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -83,13 +84,18 @@ func (y Yunpian) Name() Name {
 	return NameYunpian
 }
 
-func (y Yunpian) Send(seqID string, phoneArray []string, contentArray []string) error {
+func (y Yunpian) Send(contexts []*m.SMSContext) error {
 	//only send in production environment
 	if !util.IsProduction() {
 		logger.I("discard due to not in production environment!")
 		return ErrNotInProduction
 	}
-	form := y.assembleSendRequest(seqID, phoneArray, contentArray)
+
+	phoneArray := y.extractPhoneArray(contexts)
+	msgID := strconv.FormatInt(contexts[0].History.MsgID, 10)
+	contentArray := y.extractContentArray(contexts)
+
+	form := y.assembleSendRequest(msgID, phoneArray, contentArray)
 	endpoint := y.SendEndpoint
 	if len(contentArray) > 1 {
 		endpoint = y.MultiSendEndpoint
@@ -288,6 +294,30 @@ func (y Yunpian) GetBalance() (string, error) {
 	return "", errors.New("not implemented")
 }
 
-func (y Yunpian) MultiXSend(msgIDArray []string, phoneArray []string, contentArray []string) error {
+func (y Yunpian) MultiXSend(contexts []*m.SMSContext) error {
 	return errors.New("not implemented")
+}
+
+func (y Yunpian) extractMsgIDArray(contexts []*m.SMSContext) []string {
+	res := make([]string, len(contexts))
+	for i := range contexts {
+		res[i] = strconv.FormatInt(contexts[i].History.MsgID, 10)
+	}
+	return res
+}
+
+func (y Yunpian) extractPhoneArray(contexts []*m.SMSContext) []string {
+	res := make([]string, len(contexts))
+	for i := range contexts {
+		res[i] = contexts[i].History.Phone
+	}
+	return res
+}
+
+func (y Yunpian) extractContentArray(contexts []*m.SMSContext) []string {
+	res := make([]string, len(contexts))
+	for i := range contexts {
+		res[i] = contexts[i].History.Content
+	}
+	return res
 }
