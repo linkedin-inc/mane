@@ -22,45 +22,45 @@ var (
 )
 
 // NOTE: each template and variables in context must be the same, and the id field must be unique and not empty
-func Send(contexts []*m.SMSContext, actions ...middleware.Action) error {
+func Send(contexts []*m.SMSContext, actions ...middleware.Action) ([]*m.SMSContext, error) {
 	if len(contexts) == 0 {
-		return ErrInvalidPhoneArray
+		return nil, ErrInvalidPhoneArray
 	}
 	allowedContexts := middleware.NewMiddleware(actions...).Call(contexts)
 	if len(allowedContexts) == 0 {
-		return ErrNotAllowed
+		return nil, ErrNotAllowed
 	}
-	vendor, err := assembleMetaData(contexts)
+	vendor, err := assembleMetaData(allowedContexts)
 	if err != nil {
 		logger.E("occur error when MultiXSend sms: %v\n", err)
-		return err
+		return nil, err
 	}
-	err = vendor.Send(contexts)
+	err = vendor.Send(allowedContexts)
 	if err != nil && err != v.ErrNotInProduction {
-		return err
+		return nil, err
 	}
-	return nil
+	return allowedContexts, nil
 }
 
 // NOTE: each template in context must be the same, and the id field must be unique and not empty
-func MultiXSend(contexts []*m.SMSContext, actions ...middleware.Action) error {
+func MultiXSend(contexts []*m.SMSContext, actions ...middleware.Action) ([]*m.SMSContext, error) {
 	if len(contexts) == 0 {
-		return ErrInvalidPhoneArray
+		return nil, ErrInvalidPhoneArray
 	}
 	allowedContexts := middleware.NewMiddleware(actions...).Call(contexts)
 	if len(allowedContexts) == 0 {
-		return ErrNotAllowed
+		return nil, ErrNotAllowed
 	}
-	vendor, err := assembleMultiMetaData(contexts)
+	vendor, err := assembleMultiMetaData(allowedContexts)
 	if err != nil {
 		logger.E("occur error when MultiXSend sms: %v\n", err)
-		return err
+		return nil, err
 	}
-	err = vendor.MultiXSend(contexts)
+	err = vendor.MultiXSend(allowedContexts)
 	if err != nil && err != v.ErrNotInProduction {
-		return err
+		return nil, err
 	}
-	return nil
+	return allowedContexts, nil
 }
 
 func assembleMetaData(contexts []*m.SMSContext) (v.Vendor, error) {
