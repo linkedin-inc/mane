@@ -22,17 +22,13 @@ var (
 )
 
 // NOTE: each template and variables in context must be the same, and the id field must be unique and not empty
-func Send(contexts []*m.SMSContext, actions ...middleware.Action) ([]*m.SMSContext, error) {
+func Send(contexts []*m.SMSContext) ([]*m.SMSContext, error) {
 	if len(contexts) == 0 {
 		return nil, ErrInvalidPhoneArray
 	}
-	allowedContexts := middleware.NewMiddleware(actions...).Call(contexts)
-	if len(allowedContexts) == 0 {
-		return nil, ErrNotAllowed
-	}
-	vendor, err := assembleMetaData(allowedContexts)
+	allowedContexts, vendor, err := assembleMetaData(contexts)
 	if err != nil {
-		logger.E("occur error when MultiXSend sms: %v\n", err)
+		logger.E("occur error when Send sms: %v\n", err)
 		return nil, err
 	}
 	err = vendor.Send(allowedContexts)
@@ -43,15 +39,12 @@ func Send(contexts []*m.SMSContext, actions ...middleware.Action) ([]*m.SMSConte
 }
 
 // NOTE: each template in context must be the same, and the id field must be unique and not empty
-func MultiXSend(contexts []*m.SMSContext, actions ...middleware.Action) ([]*m.SMSContext, error) {
+func MultiXSend(contexts []*m.SMSContext) ([]*m.SMSContext, error) {
 	if len(contexts) == 0 {
 		return nil, ErrInvalidPhoneArray
 	}
-	allowedContexts := middleware.NewMiddleware(actions...).Call(contexts)
-	if len(allowedContexts) == 0 {
-		return nil, ErrNotAllowed
-	}
-	vendor, err := assembleMultiMetaData(allowedContexts)
+
+	allowedContexts, vendor, err := assembleMultiMetaData(contexts)
 	if err != nil {
 		logger.E("occur error when MultiXSend sms: %v\n", err)
 		return nil, err
@@ -63,21 +56,25 @@ func MultiXSend(contexts []*m.SMSContext, actions ...middleware.Action) ([]*m.SM
 	return allowedContexts, nil
 }
 
-func assembleMetaData(contexts []*m.SMSContext) (v.Vendor, error) {
+func assembleMetaData(contexts []*m.SMSContext) ([]*m.SMSContext, v.Vendor, error) {
 	template, err := c.WhichTemplate(t.Name(contexts[0].Template))
 	if err != nil {
 		logger.E("occur error when assembleMetaData: %v\n", err)
-		return nil, err
+		return nil, nil, err
+	}
+	allowedContexts := middleware.NewMiddleware(template.ActionList...).Call(contexts)
+	if len(allowedContexts) == 0 {
+		return nil, nil, ErrNotAllowed
 	}
 	channel, err := c.WhichChannel(template.Category)
 	if err != nil {
 		logger.E("occur error when assembleMetaData: %v\n", err)
-		return nil, err
+		return nil, nil, err
 	}
 	vendor, err := v.GetByChannel(channel)
 	if err != nil {
 		logger.E("occur error when assembleMetaData: %v\n", err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	// generate msgid list and contents
@@ -88,12 +85,12 @@ func assembleMetaData(contexts []*m.SMSContext) (v.Vendor, error) {
 		variablesArray = append(variablesArray, fmt.Sprintf(variableWrapper, key), value)
 	}
 	if len(variablesArray)%2 == 1 {
-		return nil, ErrInvalidVariables
+		return nil, nil, ErrInvalidVariables
 	}
 	replacer := strings.NewReplacer(variablesArray...)
 	content := replacer.Replace(template.Content)
 
-	for i := range contexts {
+	for i := range allowedContexts {
 		contexts[i].History = &m.SMSHistory{
 			ID:        contexts[i].ID,
 			MsgID:     msgID,
@@ -107,57 +104,61 @@ func assembleMetaData(contexts []*m.SMSContext) (v.Vendor, error) {
 			State:     m.SMSStateUnchecked,
 		}
 	}
-	return vendor, nil
+	return allowedContexts, vendor, nil
 }
 
-func assembleMultiMetaData(contexts []*m.SMSContext) (v.Vendor, error) {
+func assembleMultiMetaData(contexts []*m.SMSContext) ([]*m.SMSContext, v.Vendor, error) {
 	template, err := c.WhichTemplate(t.Name(contexts[0].Template))
 	if err != nil {
 		logger.E("occur error when assembleMultiMetaData: %v\n", err)
-		return nil, err
+		return nil, nil, err
+	}
+	allowedContexts := middleware.NewMiddleware(template.ActionList...).Call(contexts)
+	if len(allowedContexts) == 0 {
+		return nil, nil, ErrNotAllowed
 	}
 	channel, err := c.WhichChannel(template.Category)
 	if err != nil {
 		logger.E("occur error when assembleMultiMetaData: %v\n", err)
-		return nil, err
+		return nil, nil, err
 	}
 	vendor, err := v.GetByChannel(channel)
 	if err != nil {
 		logger.E("occur error when assembleMultiMetaData: %v\n", err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	// generate msgid list and contents
-	msgIDList := make([]int64, len(contexts))
-	contentList := make([]string, len(contexts))
-	for i := range contexts {
+	msgIDList := make([]int64, len(allowedContexts))
+	contentList := make([]string, len(allowedContexts))
+	for i := range allowedContexts {
 		msgIDList[i] = m.NewSmsContextID()
 
 		var variablesArray []string
-		for key, value := range contexts[i].Variables {
+		for key, value := range allowedContexts[i].Variables {
 			variablesArray = append(variablesArray, fmt.Sprintf(variableWrapper, key), value)
 		}
 		if len(variablesArray)%2 == 1 {
-			return nil, ErrInvalidVariables
+			return nil, nil, ErrInvalidVariables
 		}
 		replacer := strings.NewReplacer(variablesArray...)
 		assembled := replacer.Replace(template.Content)
 		contentList[i] = assembled
 	}
 
-	for i := range contexts {
-		contexts[i].History = &m.SMSHistory{
-			ID:        contexts[i].ID,
+	for i := range allowedContexts {
+		allowedContexts[i].History = &m.SMSHistory{
+			ID:        allowedContexts[i].ID,
 			MsgID:     msgIDList[i],
 			Timestamp: time.Now(),
-			Phone:     contexts[i].Phone,
+			Phone:     allowedContexts[i].Phone,
 			Content:   contentList[i],
-			Template:  contexts[i].Template,
+			Template:  allowedContexts[i].Template,
 			Category:  string(template.Category),
 			Channel:   int(channel),
 			Vendor:    string(vendor.Name()),
 			State:     m.SMSStateUnchecked,
 		}
 	}
-	return vendor, nil
+	return allowedContexts, vendor, nil
 }

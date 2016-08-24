@@ -8,6 +8,12 @@ import (
 type Action interface {
 	Name() string
 	Call(context *model.SMSContext, next func() bool) bool
+	Unmarshal(actionStruct ActionStruct) (Action, error)
+}
+
+type ActionStruct struct {
+	Name string `bson:"name" json:"name"`
+	Exp  string `bson:"exp,omitempty" json:"exp,omitempty"`
 }
 
 type Middleware struct {

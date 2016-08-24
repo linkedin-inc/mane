@@ -1,6 +1,12 @@
 package template
 
-import c "github.com/linkedin-inc/mane/callback"
+import (
+	"sync"
+
+	c "github.com/linkedin-inc/mane/callback"
+	"github.com/linkedin-inc/mane/logger"
+	"github.com/linkedin-inc/mane/middleware"
+)
 
 //短信模版名称, 需要和CRM中定义的相同, 建议在CRM中添加新模版后对应添加新的常量定义
 type Name string
@@ -18,15 +24,6 @@ const (
 	//define category constant for reference
 	//CategoryBar Category = "bar"
 	BlankCategory = Category("blank")
-)
-
-//短信优先级
-type Priority int
-
-const (
-	LowPriority Priority = iota + 1
-	MediumPriority
-	HighPriority
 )
 
 //短信通道
@@ -74,12 +71,26 @@ type SMSCategory struct {
 }
 
 type SMSTemplate struct {
-	Name        Name     `bson:"name" json:"name"`
-	Category    Category `bson:"category" json:"category"`
-	Priority    Priority `bson:"priority" json:"priority"`
-	Content     string   `bson:"content" json:"content"`
-	Timestamp   int64    `bson:"timestamp" json:"timestamp"`
-	Enabled     bool     `bson:"enabled" json:"enabled"`
-	Description string   `bson:"description" json:"description"`
-	Callback    c.Name   `bson:"callback" json:"callback"`
+	Name             Name                      `bson:"name" json:"name"`
+	Category         Category                  `bson:"category" json:"category"`
+	Content          string                    `bson:"content" json:"content"`
+	Timestamp        int64                     `bson:"timestamp" json:"timestamp"`
+	Enabled          bool                      `bson:"enabled" json:"enabled"`
+	Description      string                    `bson:"description" json:"description"`
+	Callback         c.Name                    `bson:"callback" json:"callback"`
+	ActionStructList []middleware.ActionStruct `bson:"actions" json:"actions"`
+	ActionList       []middleware.Action       `bson:"-" json:"-"`
+}
+
+var ActionCenter = make(map[string]middleware.Action)
+var locker = new(sync.RWMutex)
+
+func RegisterAction(actionName string, action middleware.Action) {
+	locker.Lock()
+	defer locker.Unlock()
+	if _, ok := ActionCenter[actionName]; ok {
+		panic("sms duplicate action registered: " + actionName)
+	}
+	logger.I("%v registered\n", actionName)
+	ActionCenter[actionName] = action
 }

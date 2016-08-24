@@ -24,3 +24,7 @@ func (*ErrorReport) Call(context *m.SMSContext, next func() bool) (acknowledge b
 	next()
 	return true
 }
+
+func (*ErrorReport) Unmarshal(actionStruct ActionStruct) (Action, error) {
+	return &ErrorReport{}, nil
+}
