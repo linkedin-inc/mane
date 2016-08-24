@@ -15,7 +15,7 @@ func (*ErrorReport) Name() string {
 	return "ErrorReport"
 }
 
-func (*ErrorReport) Call(context *m.SMSContext, next func() bool) (acknowledge bool) {
+func (*ErrorReport) Call(context *m.SMSContext, next func() bool) bool {
 	defer func() {
 		if err := recover(); err != nil {
 			logger.E("sms middleware error report: %v\n", err)
