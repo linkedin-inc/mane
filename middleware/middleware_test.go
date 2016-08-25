@@ -30,6 +30,10 @@ func (m *KeepOdd) Call(context *m.SMSContext, next func() bool) bool {
 	}
 }
 
+func (*KeepOdd) Unmarshal(actionStruct ActionStruct) (Action, error) {
+	return &KeepOdd{}, nil
+}
+
 func NewKeepOdd(name string) *KeepOdd {
 	return &KeepOdd{ActionName: name}
 }
@@ -51,6 +55,10 @@ func (m *KeepThree) Call(context *m.SMSContext, next func() bool) bool {
 	}
 }
 
+func (*KeepThree) Unmarshal(actionStruct ActionStruct) (Action, error) {
+	return &KeepThree{}, nil
+}
+
 func NewKeepThree(name string) *KeepThree {
 	return &KeepThree{ActionName: name}
 }
@@ -67,6 +75,10 @@ func (m *PanicZero) Call(context *m.SMSContext, next func() bool) bool {
 	}
 	next()
 	return true
+}
+
+func (*PanicZero) Unmarshal(actionStruct ActionStruct) (Action, error) {
+	return &PanicZero{}, nil
 }
 
 func NewPanicZero() *PanicZero {
