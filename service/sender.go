@@ -92,7 +92,7 @@ func assembleMetaData(contexts []*m.SMSContext) ([]*m.SMSContext, v.Vendor, erro
 
 	for i := range allowedContexts {
 		contexts[i].History = &m.SMSHistory{
-			ID:        contexts[i].ID,
+			MID:       contexts[i].ID,
 			MsgID:     msgID,
 			Timestamp: time.Now(),
 			Phone:     contexts[i].Phone,
@@ -148,7 +148,7 @@ func assembleMultiMetaData(contexts []*m.SMSContext) ([]*m.SMSContext, v.Vendor,
 
 	for i := range allowedContexts {
 		allowedContexts[i].History = &m.SMSHistory{
-			ID:        allowedContexts[i].ID,
+			MID:       allowedContexts[i].ID,
 			MsgID:     msgIDList[i],
 			Timestamp: time.Now(),
 			Phone:     allowedContexts[i].Phone,

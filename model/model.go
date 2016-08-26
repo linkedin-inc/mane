@@ -18,7 +18,7 @@ const (
 )
 
 type SMSHistory struct {
-	ID        int64     `bson:"_id" json:"id"`
+	MID       int64     `bson:"mid" json:"mid"`
 	MsgID     int64     `bson:"msg_id" json:"msg_id"`
 	Timestamp time.Time `bson:"timestamp" json:"timestamp"`
 	Phone     string    `bson:"phone" json:"phone"`
