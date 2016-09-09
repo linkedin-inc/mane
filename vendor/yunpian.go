@@ -294,8 +294,8 @@ func (y Yunpian) GetBalance() (string, error) {
 	return "", errors.New("not implemented")
 }
 
-func (y Yunpian) MultiXSend(contexts []*m.SMSContext) error {
-	return errors.New("not implemented")
+func (y Yunpian) MultiXSend(contexts []*m.SMSContext) ([]*m.SMSContext, error) {
+	return nil, errors.New("not implemented")
 }
 
 func (y Yunpian) extractMsgIDArray(contexts []*m.SMSContext) []string {

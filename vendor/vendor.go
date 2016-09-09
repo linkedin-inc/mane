@@ -44,8 +44,8 @@ type Name string
 //Vendor represents a SMS vendor, it can preforms two behaviors, send sms and check delivery status and pull reply.
 type Vendor interface {
 	Name() Name
-	Send(contexts []*m.SMSContext) error
-	MultiXSend(contexts []*m.SMSContext) error
+	Send(contexts []*m.SMSContext) ([]*m.SMSContext, error)
+	MultiXSend(contexts []*m.SMSContext) ([]*m.SMSContext, error)
 	Status() ([]*m.DeliveryStatus, error)
 	Reply() ([]*m.Reply, error)
 	GetBalance() (string, error)

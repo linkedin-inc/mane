@@ -19,6 +19,7 @@ var (
 	ErrInvalidVariables  = errors.New("invalid variables")
 	ErrInvalidPhoneArray = errors.New("invalid phone array")
 	ErrNotAllowed        = errors.New("not allowed")
+	ErrNetwork           = errors.New("network error")
 )
 
 // NOTE: each template and variables in context must be the same, and the id field must be unique and not empty
@@ -31,11 +32,15 @@ func Send(contexts []*m.SMSContext) ([]*m.SMSContext, error) {
 		logger.E("occur error when Send sms: %v\n", err)
 		return nil, err
 	}
-	err = vendor.Send(allowedContexts)
+	succeedContexts, err := vendor.Send(allowedContexts)
 	if err != nil && err != v.ErrNotInProduction {
 		return nil, err
 	}
-	return allowedContexts, nil
+	// only happen when http request failed
+	if len(succeedContexts) == 0 {
+		return nil, ErrNetwork
+	}
+	return succeedContexts, nil
 }
 
 // NOTE: each template in context must be the same, and the id field must be unique and not empty
@@ -43,17 +48,20 @@ func MultiXSend(contexts []*m.SMSContext) ([]*m.SMSContext, error) {
 	if len(contexts) == 0 {
 		return nil, ErrInvalidPhoneArray
 	}
-
 	allowedContexts, vendor, err := assembleMultiMetaData(contexts)
 	if err != nil {
 		logger.E("occur error when MultiXSend sms: %v\n", err)
 		return nil, err
 	}
-	err = vendor.MultiXSend(allowedContexts)
+	succeedContexts, err := vendor.MultiXSend(allowedContexts)
 	if err != nil && err != v.ErrNotInProduction {
 		return nil, err
 	}
-	return allowedContexts, nil
+	// only happen when http request failed
+	if len(succeedContexts) == 0 {
+		return nil, ErrNetwork
+	}
+	return succeedContexts, nil
 }
 
 func assembleMetaData(contexts []*m.SMSContext) ([]*m.SMSContext, v.Vendor, error) {
