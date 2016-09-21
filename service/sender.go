@@ -48,6 +48,9 @@ func MultiXSend(contexts []*m.SMSContext) ([]*m.SMSContext, error) {
 	if len(contexts) == 0 {
 		return nil, ErrInvalidPhoneArray
 	}
+	if len(contexts) == 1 {
+		return Send(contexts)
+	}
 	allowedContexts, vendor, err := assembleMultiMetaData(contexts)
 	if err != nil {
 		logger.E("occur error when MultiXSend sms: %v\n", err)
