@@ -34,6 +34,7 @@ const (
 	MarketingChannel
 	ProductionChannel
 	InternalChannel
+	InternationalChannel
 )
 
 func (ch Channel) String() string {
