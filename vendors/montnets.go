@@ -331,7 +331,12 @@ func (m Montnets) MultiXSend(contexts []*mo.SMSContext) ([]*mo.SMSContext, error
 		end := start + maxSendNumEachTime
 		currentStep := i
 		pool.JobQueue <- func() {
-			defer pool.JobDone()
+			defer func() {
+				if r := recover(); r != nil {
+					logger.E("send sms[%d:%d] panic:%v\n", start, end, r)
+				}
+				pool.JobDone()
+			}()
 			if end > len(phoneArray) {
 				end = len(phoneArray)
 			}
@@ -344,11 +349,11 @@ func (m Montnets) MultiXSend(contexts []*mo.SMSContext) ([]*mo.SMSContext, error
 				logger.I("start sending multiX sms, current step:%d, start:%d, end:%d, retryTimes:%d\n", currentStep, start, end, i)
 				request := m.assembleMultiXSendRequest(msgIDArray[start:end], phoneArray[start:end], contentArray[start:end])
 				response, err = http.PostForm(m.MultiXSendPoint, *request)
-				errGroup.Add(err)
 				if err != nil {
 					logger.E("retryTimes:%d, failed to send multiX sms[%d:%d]:%v, %v\n", i, start, end, phoneArray[start:end], err)
 					if i == retryTimes-1 {
 						// 本批次发送失败
+						errGroup.Add(err)
 						return
 					}
 					time.Sleep(time.Second)
