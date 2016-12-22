@@ -1,4 +1,4 @@
-package vendor
+package vendors
 
 import (
 	"encoding/base64"
@@ -86,74 +86,39 @@ func (m Montnets) Name() Name {
 }
 
 //Send sms to given phone number with content
-func (m Montnets) Send(contexts []*mo.SMSContext) error {
-	//TODO we should ensure all content must be the same
-	//only send in production environment
+func (m Montnets) Send(context *mo.SMSContext) error {
 	if !u.IsProduction() {
 		logger.E("discard due to not in production environment!")
 		return ErrNotInProduction
 	}
 
-	phoneArray := m.extractPhoneArray(contexts)
-	msgID := strconv.FormatInt(contexts[0].History.MsgID, 10)
-	content := contexts[0].History.Content
+	phoneArray := []string{context.Phone}
+	msgID := strconv.FormatInt(context.History.MsgID, 10)
+	content := context.History.Content
+	logger.I("start sending sms:%s\n", context.Phone)
 
-	var finalError error
-	pool := u.NewPool(poolSize, poolSize)
-	defer pool.Release()
-	jobCount := int(math.Ceil(float64(len(phoneArray)) / float64(maxSendNumEachTime))) // total job count
-	pool.WaitCount(jobCount)
-	logger.I("start sending sms, total length: %d, total job count: %d", len(phoneArray), jobCount)
-	for i := 0; i < jobCount; i++ {
-		start := i * maxSendNumEachTime
-		end := start + maxSendNumEachTime
-		currentStep := i
-		pool.JobQueue <- func() {
-			defer pool.JobDone()
-			if end > len(phoneArray) {
-				end = len(phoneArray)
+	var response *http.Response
+	var err error
+	for i := 0; i < retryTimes; i++ {
+		request := m.assembleSendRequest(msgID, phoneArray, content)
+		response, err = http.PostForm(m.SendEndpoint, *request)
+		if err != nil {
+			logger.E("retryTimes:%d, failed to send sms: %s: %v\n", i, context.Phone, err)
+			if i == retryTimes-1 {
+				return err
 			}
-			if start >= end {
-				return
-			}
-			var response *http.Response
-			var err error
-			for i := 0; i < retryTimes; i++ {
-				logger.D("start sending sms, current step:%d, start:%d, end:%d, retryTimes:%d", currentStep, start, end, i)
-				request := m.assembleSendRequest(msgID, phoneArray[start:end], content)
-				response, err = http.PostForm(m.SendEndpoint, *request)
-				if err != nil {
-					logger.E("retryTimes:%d, failed to send sms[%d:%d]: %v\n", i, start, end, err)
-					if i == retryTimes-1 {
-						if finalError == nil {
-							finalError = err
-						}
-						return
-					}
-					time.Sleep(time.Second)
-				} else {
-					break
-				}
-			}
-			if s := response.StatusCode; s != http.StatusOK {
-				if finalError == nil {
-					finalError = ErrSendSMSFailed
-				}
-				return
-			}
-			err = m.handleSendResponse(response)
-			if err != nil {
-				logger.E("failed to handle send response[%d:%d]: %v\n", start, end, err)
-				if finalError == nil {
-					finalError = ErrSendSMSFailed
-				}
-				return
-			}
+			time.Sleep(time.Second)
+		} else {
+			break
 		}
 	}
-	pool.WaitAll()
-	logger.I("finish sending sms, total length %d", len(phoneArray))
-	return finalError
+	err = m.handleSendResponse(response)
+	if err != nil {
+		logger.E("failed to handle send response: %v\n", err)
+		return err
+	}
+	logger.I("finish sending sms:%s\n", context.Phone)
+	return nil
 }
 
 func (m Montnets) assembleSendRequest(seqID string, phoneArray []string, content string) *url.Values {
@@ -173,16 +138,9 @@ func (m Montnets) handleSendResponse(response *http.Response) error {
 		_ = response.Body.Close()
 	}()
 	data, _ := ioutil.ReadAll(response.Body)
-	//actually we just ignore what the response is exactly, later we will check delivery status of messages.
-	//matched := responseMatcher.FindSubmatch(data)
-	//if matched != nil && len(matched) == 2 {
-	//	return nil
-	//}
-	//return errSendFailed
 	var body montnetsSendResponse
 	err := xml.Unmarshal(data, &body)
 	if err != nil {
-		//omit error
 		return nil
 	}
 	errMsg, existed := errorCode2Msg[body.Result]
@@ -228,6 +186,7 @@ func (m Montnets) handleUpstreamResponse(response *http.Response) ([]string, err
 		_ = response.Body.Close()
 	}()
 	data, _ := ioutil.ReadAll(response.Body)
+	logger.I("Montnets handleUpstreamResponse:\n%s\n", string(data))
 	var body montnetsUpstreamResponse
 	err := xml.Unmarshal(data, &body)
 	if err != nil {
@@ -348,18 +307,20 @@ func (m Montnets) handleBalanceResponse(response *http.Response) (string, error)
 	return body, nil
 }
 
-func (m Montnets) MultiXSend(contexts []*mo.SMSContext) error {
+func (m Montnets) MultiXSend(contexts []*mo.SMSContext) ([]*mo.SMSContext, error) {
 	//only send in production environment
 	if !u.IsProduction() {
 		logger.I("discard due to not in production environment!")
-		return ErrNotInProduction
+		return contexts, ErrNotInProduction
 	}
+
+	var succeedContexts []*mo.SMSContext
+	var errGroup u.ErrorGroup
 
 	phoneArray := m.extractPhoneArray(contexts)
 	msgIDArray := m.extractMsgIDArray(contexts)
 	contentArray := m.extractContentArray(contexts)
 
-	var finalError error
 	pool := u.NewPool(poolSize, poolSize)
 	defer pool.Release()
 	jobCount := int(math.Ceil(float64(len(contexts)) / float64(maxSendNumEachTime))) // total job count
@@ -380,15 +341,14 @@ func (m Montnets) MultiXSend(contexts []*mo.SMSContext) error {
 			var response *http.Response
 			var err error
 			for i := 0; i < retryTimes; i++ {
-				logger.D("start sending multiX sms, current step:%d, start:%d, end:%d, retryTimes:%d", currentStep, start, end, i)
+				logger.I("start sending multiX sms, current step:%d, start:%d, end:%d, retryTimes:%d\n", currentStep, start, end, i)
 				request := m.assembleMultiXSendRequest(msgIDArray[start:end], phoneArray[start:end], contentArray[start:end])
 				response, err = http.PostForm(m.MultiXSendPoint, *request)
+				errGroup.Add(err)
 				if err != nil {
 					logger.E("retryTimes:%d, failed to send multiX sms[%d:%d]:%v, %v\n", i, start, end, phoneArray[start:end], err)
 					if i == retryTimes-1 {
-						if finalError == nil {
-							finalError = err
-						}
+						// 本批次发送失败
 						return
 					}
 					time.Sleep(time.Second)
@@ -396,25 +356,20 @@ func (m Montnets) MultiXSend(contexts []*mo.SMSContext) error {
 					break
 				}
 			}
-			if s := response.StatusCode; s != http.StatusOK {
-				if finalError == nil {
-					finalError = ErrSendSMSFailed
-				}
-				return
-			}
 			err = m.handleSendResponse(response)
+			errGroup.Add(err)
 			if err != nil {
 				logger.E("failed to handle multiX send response[%d:%d]: %v\n", start, end, err)
-				if finalError == nil {
-					finalError = ErrSendSMSFailed
-				}
 				return
 			}
+			// 本批次发送成功
+			logger.I("finish sending multiX sms, current step:%d, start:%d, end:%d\n", currentStep, start, end)
+			succeedContexts = append(succeedContexts, contexts[start:end]...)
 		}
 	}
 	pool.WaitAll()
 	logger.I("finish sending multiX sms, total length %d", len(phoneArray))
-	return finalError
+	return succeedContexts, errGroup.Finalize()
 }
 
 func (m Montnets) assembleMultiXSendRequest(msgIDArray []string, phoneArray []string, contentArray []string) *url.Values {

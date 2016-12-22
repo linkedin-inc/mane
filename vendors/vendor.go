@@ -1,4 +1,4 @@
-package vendor
+package vendors
 
 import (
 	"errors"
@@ -41,11 +41,11 @@ func Prepare(config map[t.Channel]c.SMSConfig) {
 
 type Name string
 
-//Vendor represents a SMS vendor, it can preforms two behaviors, send sms and check delivery status and pull reply.
+//Vendor represents a SMS vendor
 type Vendor interface {
 	Name() Name
-	Send(contexts []*m.SMSContext) error
-	MultiXSend(contexts []*m.SMSContext) error
+	Send(context *m.SMSContext) error                             // 发送单条短信接口
+	MultiXSend(contexts []*m.SMSContext) ([]*m.SMSContext, error) // 发送批量短信接口
 	Status() ([]*m.DeliveryStatus, error)
 	Reply() ([]*m.Reply, error)
 	GetBalance() (string, error)

@@ -44,7 +44,7 @@ func Atoi32Safe(s string, defaultVal int32) int32 {
 	return int32(i)
 }
 
-func Itoa(i int) (s string) {
+func Itoa(i int) string {
 	return strconv.FormatInt(int64(i), 10)
 }
 

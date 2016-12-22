@@ -17,8 +17,7 @@ type Name string
 type Callback func(status *m.DeliveryStatus, history *m.SMSHistory) error
 
 type callRegistry struct {
-	//use a mutex to avoid duplicated register
-	locker    *sync.RWMutex
+	locker    *sync.RWMutex //use a mutex to avoid duplicated register
 	callbacks map[Name]Callback
 }
 

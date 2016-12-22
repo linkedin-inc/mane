@@ -8,7 +8,7 @@ import (
 	"github.com/linkedin-inc/mane/middleware"
 )
 
-//短信模版名称, 需要和CRM中定义的相同, 建议在CRM中添加新模版后对应添加新的常量定义
+//短信模版名称
 type Name string
 
 const (
@@ -17,14 +17,8 @@ const (
 	BlankName = Name("blank")
 )
 
-//短信类别名称, 它决定了短信ID前缀以及短信投递渠道(营销渠道/产品渠道), 需要和CRM中定义的相同, 建议在CRM中添加新类别后对应添加新的常量定义
+//短信类别名称, 它决定了投递渠道(营销渠道/产品渠道)
 type Category string
-
-const (
-	//define category constant for reference
-	//CategoryBar Category = "bar"
-	BlankCategory = Category("blank")
-)
 
 //短信通道
 type Channel int
@@ -45,21 +39,10 @@ func (ch Channel) String() string {
 		return "production"
 	case InternalChannel:
 		return "internal"
+	case InternationalChannel:
+		return "international"
 	default:
 		return "unknown"
-	}
-}
-
-func WhichChannel(str string) Channel {
-	switch str {
-	case "production":
-		return ProductionChannel
-	case "marketing":
-		return MarketingChannel
-	case "internal":
-		return InternalChannel
-	default:
-		return UnknownChannel
 	}
 }
 

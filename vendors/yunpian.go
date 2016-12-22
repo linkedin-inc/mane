@@ -1,4 +1,4 @@
-package vendor
+package vendors
 
 import (
 	"encoding/json"
@@ -84,22 +84,14 @@ func (y Yunpian) Name() Name {
 	return NameYunpian
 }
 
-func (y Yunpian) Send(contexts []*m.SMSContext) error {
+func (y Yunpian) Send(context *m.SMSContext) error {
 	//only send in production environment
 	if !util.IsProduction() {
 		logger.I("discard due to not in production environment!")
 		return ErrNotInProduction
 	}
-
-	phoneArray := y.extractPhoneArray(contexts)
-	msgID := strconv.FormatInt(contexts[0].History.MsgID, 10)
-	contentArray := y.extractContentArray(contexts)
-
-	form := y.assembleSendRequest(msgID, phoneArray, contentArray)
+	form := y.assembleSendRequest(strconv.FormatInt(context.History.MsgID, 10), []string{context.Phone}, []string{context.History.Content})
 	endpoint := y.SendEndpoint
-	if len(contentArray) > 1 {
-		endpoint = y.MultiSendEndpoint
-	}
 	request, _ := http.NewRequest("POST", endpoint, strings.NewReader(form.Encode()))
 	request.Header.Add("Accept", "application/json;charset=utf-8;")
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded;charset=utf-8;")

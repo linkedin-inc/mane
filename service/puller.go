@@ -3,7 +3,7 @@ package service
 import (
 	"github.com/linkedin-inc/mane/logger"
 	m "github.com/linkedin-inc/mane/model"
-	v "github.com/linkedin-inc/mane/vendor"
+	v "github.com/linkedin-inc/mane/vendors"
 )
 
 func Pull(name v.Name) ([]*m.DeliveryStatus, []*m.Reply, error) {
