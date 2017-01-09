@@ -1,7 +1,6 @@
 package util
 
 import (
-	"os"
 	"strconv"
 
 	"github.com/linkedin-inc/mane/logger"
@@ -49,5 +48,5 @@ func Itoa(i int) string {
 }
 
 func IsProduction() bool {
-	return os.Getenv("CHITU_ENV") == "production"
+	return true
 }
